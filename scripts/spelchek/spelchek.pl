@@ -297,7 +297,7 @@ sub get_po_line {
 
 sub edit_po_file {
 	my ($po, $misspelled) = @_;
-	my $line_no = get_po_line($po->msgid());
+	my $line_no = get_po_line($po->msgid(), 'for msgstr');
 	edit_file("$LANGUAGE.po", $line_no, $misspelled);
 }
 
