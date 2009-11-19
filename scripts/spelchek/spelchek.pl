@@ -5,17 +5,39 @@ use Data::Dumper;
 use Config::General;
 use Term::ANSIColor;
 use Config::General;
-use Locale::PO;
+use Locale::PO 0.21;
 use Regexp::Common;
+use Getopt::Std;
+use File::Basename;
 
 # Config entries (~/.spellcheckrc)
 #
 # Entry: text_editor
 # Vars : %{filename} %{line_no}  %{wrongword}
 
-if (! defined $ARGV[0] ) {
-	print "Usage: " . __FILE__ . " <language>\n";
-	print "Example: " . __FILE__ . " en_US\n";
+my %opts;
+my $valid_option = getopts('sd:', \%opts);
+my $opt_summary_only = 0;
+my $opt_debug_level = 0;
+
+my $pristine_msgstr;
+my $current_msgstr_cleaned;
+my $current_msgstr_stripped;
+my $punctuations_removed;
+my $digits_removed;
+my $dashes_and_quotes_removed;
+
+if (defined $opts{s}) {
+	$opt_summary_only = 1;
+}
+if (defined $opts{d}) {
+	$opt_debug_level = int($opts{d});
+}
+
+my $me = basename(__FILE__);
+if (! $valid_option || ! defined $ARGV[0] ) {
+	print "Usage: " . $me . " [-s] [-d <debug level>] <language>\n";
+	print "Example: " . $me . " en_US\n";
 	exit 1;
 }
 
@@ -79,6 +101,11 @@ Valid configuration entries in ~/.spellcheckrc are:
   
      If defined, spellcheck.pl will also use the specified personal_dictionary.
 
+To show wordcount statistics:
+=============================
+
+   \$ make wordcount LANGUAGE=en_US
+
 To begin spellchecking:
 =======================
 
@@ -117,10 +144,10 @@ my $ABBREVIATION_FILE = "./dict/$LANGUAGE.abbr.txt";
 my $PERSONAL_DICT_FILE = undef;
 my $COMMON_DICT_FILE = './dict/common.txt';
 my $MISSPELLED_COLOR = 'white on_red'; # Same as ack's highlighting
+my $DB_COLOR = 'blue on_white';
 my $CORRECTED_COLOR  = 'black on_green';
 my %internal_dict_has;
-my %statistics;
-my $debug = 0;
+my $statistics_for = {};
 
 my %conf;
 my @external_commands;
@@ -170,7 +197,7 @@ use HTML::Strip;
 sub debug {
 	my ($text, $level) = @_;
 	$level ||= 1;
-	if ($debug >= $level) {
+	if ($opt_debug_level >= $level) {
 		print colored ['yellow on_black'], "DEBUG: " . $text;
 	}
 }
@@ -391,10 +418,10 @@ sub action_handler_add_to_abbreviation_dict {
 }
 
 sub show_statistics {
-	print "Replacement summary:\n";
+	print "Summary for $LANGUAGE:\n";
 	my $c = 0;
-	foreach my $key (sort keys %statistics) {
-		my $frequency = $statistics{$key};
+	foreach my $key (sort keys %{$statistics_for->{replacements}}) {
+		my $frequency = $statistics_for->{replacements}->{$key};
 		$c += $frequency;
 		printf "  $key: $frequency time";
 		if ($frequency > 1) {
@@ -702,12 +729,17 @@ sub get_source_meta {
 }
 
 sub show_db_content {
-	my $meta = shift;
+	my ($misspelled, $meta) = @_;
+
 	my $table = $meta->{table};
 	my $primary_key_column = $meta->{primary_key_column};
 	my $primary_key_value = $meta->{primary_key_value};
 	my $column_name = $meta->{column_name};
-	print "Database entry: TABLE '$table' PRIMARY KEY '$primary_key_column' = '$primary_key_value' COLUMN '$column_name'\n";
+	print color($DB_COLOR) . 'DB entry' . color('reset') . ': ' 
+		. "TABLE '$table' PRIMARY KEY '$primary_key_column' = '$primary_key_value' COLUMN '$column_name'\n";
+	print color($DB_COLOR) . 'Fulltext' . color('reset') . ': ';
+	print highlight($MISSPELLED_COLOR, $misspelled, $pristine_msgstr . "\n");
+	
 }
 
 sub show_sources {
@@ -716,7 +748,7 @@ sub show_sources {
 	# print "Showing sources fo \'$misspelled\'\n";
 	foreach my $source (get_source_meta($po)) {
 		if ($source->{type} eq 'DB') {
-			show_db_content($source->{meta});
+			show_db_content($misspelled, $source->{meta});
 		} elsif ($source->{type} eq 'FILE') {
 			my $CONTEXT_LINES = 13; # just because.
 			show_context_lines(
@@ -815,7 +847,9 @@ sub action_handler_replace_with_suggested {
 				replace_db_content($source->{meta}, $original_word, $suggested_word);
 			} elsif ($source->{type} eq 'FILE') {
 				if (my $line_no = replace_text_content($source->{meta}, $original_word, $suggested_word)) {
-					$statistics{"$original_word -> $suggested_word"} += 1;
+					$statistics_for
+						->{replacements}
+						->{"$original_word -> $suggested_word"} += 1;
 					report_on_text_replacement($source->{meta}, $original_word, $suggested_word, $line_no);
 				}
 			}
@@ -877,6 +911,16 @@ sub handle_unknown_word {
 	my $check_again = 0;
 
 	print "\n";
+
+	debug( color('yellow') . " ORIG: " . $current_msgstr_stripped . color('reset') . "\n");
+
+	debug( color('green') . "CLEAN: " . $current_msgstr_cleaned . color('reset') . "\n" );
+	debug( color('white on_red')   . "REMOVED: " . $punctuations_removed . color('reset') . "\n")
+		if (length $punctuations_removed);
+	debug( color('white on_red')   . "REMOVED: " . $digits_removed . color('reset') . "\n")
+		if (length $digits_removed);
+	debug( color('white on_red')   . "REMOVED: " . $dashes_and_quotes_removed . color('reset') . "\n")
+		if (length $dashes_and_quotes_removed);
 	if ($misspelled =~ /-/) {
 		print_header('UNKNOWN COMPOUND WORD');
 	}
@@ -959,28 +1003,22 @@ sub check_spelling {
 		# }
 
 		if (is_known_abbreviation($w)) {
+			$statistics_for->{total_word_count} += 1;
 			debug("Found in abbreviation: $w\n", 2);
 			next;
 		}
 		if (is_in_internal_dict($w)) {
+			$statistics_for->{total_word_count} += 1;
 			debug("Found in internal (local+global) dict: $w\n", 2);
 			next;
 		}
 		next if (! length $w);
 		debug ("Checking [$w]\n", 3);
+
 		if (! $speller->check($w)) {
+			$statistics_for->{total_word_count} += 1;
+			$statistics_for->{incorrect_word_count} += 1;
 			$valid_phrase = 0;
-			#my $need_further_check = 1;
-			#if ($w =~ /^($RE{num}{real}|\d+)[-]{0,1}/) {
-			#	my $no_number = $w;
-			#	$no_number =~ s/^$RE{num}{real}//;
-			#	$need_further_check =  ! $speller->check($no_number);
-			#} elsif ($w =~ /$RE{num}{real}$/) {
-			#	my $no_number = $w;
-			#	$no_number =~ s/$RE{num}{real}$//;
-			#	$need_further_check =  ! $speller->check($no_number);
-			#}
-			#next if (! $need_further_check );
 
 			my $c = 0;
 			while ( handle_unknown_word($speller, $w, $po, $original_word) ) {
@@ -993,6 +1031,9 @@ sub check_spelling {
 				}
 				$c += 1;
 			}
+		}
+		else {
+			$statistics_for->{correct_word_count} += 1;
 		}
 	}
 	return $valid_phrase;
@@ -1037,6 +1078,68 @@ sub remove_beginning_and_ending {
 	return $text;
 }
 
+sub remove_punctuations_but_not_dash_and_quote {
+	my ($msgstr) = @_;
+
+	my $removed = '';
+	$msgstr =~ s/(([-'])|([[:punct:]]))/$removed .= $3 if defined $3;$2 || ' ';/ge;
+
+	return ($msgstr, $removed);
+}
+
+sub remove_digits {
+	my ($msgstr) = @_;
+
+	my $removed = '';
+	$msgstr =~ s/([[:digit:]])/$removed .= $1 if defined $1;' ';/ge;
+
+	return ($msgstr, $removed);
+}
+
+sub remove_beginning_and_ending_dashes_and_quotes {
+	my ($msgstr) = @_;
+
+	my $removed = '';
+	$msgstr =~ s/\s([-'])/$removed .= $1 if defined $1;' ';/ge;
+	$msgstr =~ s/([-'])\s/$removed .= $1 if defined $1;' ';/ge;
+	$msgstr =~ s/^[-']/ /;
+	$msgstr =~ s/[-']$/ /;
+
+	return ($msgstr, $removed);
+}
+
+my $html_stripper = HTML::Strip->new(); # yummy!
+$html_stripper->set_decode_entities(0);
+	
+sub remove_insignificant_characters {
+	my ($msgstr) = @_;
+
+	# Remove beginning and ending quotes
+	$msgstr =~ s/^"//;
+	$msgstr =~ s/"$//;
+
+	# Remove HTML tags, retain HTML entities (&[a-z]+;)
+	$msgstr = $html_stripper->parse($msgstr);
+	$html_stripper->eof();
+	# Remove undecoded html entities
+	$msgstr =~ s/&[a-z]+;/ /g;
+
+	# Remove escaped newlines, tabs
+	$msgstr =~ s/\\n/\n/gs;
+	$msgstr =~ s/\\t/ /gs;
+
+	$current_msgstr_stripped = $msgstr;
+
+
+	($msgstr, $punctuations_removed) = remove_punctuations_but_not_dash_and_quote($msgstr);
+	($msgstr, $digits_removed)       = remove_digits($msgstr);
+	($msgstr, $dashes_and_quotes_removed) = remove_beginning_and_ending_dashes_and_quotes($msgstr);
+
+	$current_msgstr_cleaned = $msgstr;
+
+	return $msgstr;
+}
+
 sub spelchek {
 	my ($lang, $messages_aref) = @_; 
 
@@ -1062,80 +1165,39 @@ sub spelchek {
 	}
 
 
-	my $html_stripper = HTML::Strip->new(); # yummy!
-	$html_stripper->set_decode_entities(0);
-	
 	# %1, $1.5
-	my $look_like_number = "[+%\$-]{0,1}$RE{num}{real}\%{0,1}";
+	my $look_like_number = "[+%\$-]{0,1}".$RE{num}{real} . "\%{0,1}";
 
-	print "Spellchecking $lang.\n\n";
+	print "Language: $lang\n";
+	my $count = -1;
 	for my $po (@$messages_aref) {
+		$count += 1;
 		next if ($po->fuzzy());
-		# TODO: next if ($po->obsolete());
-		# TODO: HAVE to upgrade Locale::PO to 0.21
+		next if ($po->obsolete());
 
 		my $msgid = $po->msgid();
-		my $msgstr = $po->msgstr();
-
-		$msgid =~ s/^"//;
-		$msgid =~ s/"$//;
 		# Skip po header
-		next if (length $msgid == 0);
-		$msgstr =~ s/^"//;
-		$msgstr =~ s/"$//;
+		next if $msgid eq '""';
 
-		# Remove newlines and tab escape sequences
-		$msgstr =~ s/\\n/\n/gs;
-		$msgstr =~ s/\\t/ /gs;
-		$msgstr =~ s/\\"/ /gs;
+		my $msgstr = $po->msgstr();
+		$pristine_msgstr = $msgstr;
 
-		# Unescape backslashes
-		#$msgstr =~ s/\\\\/\\/gs;
+		$msgstr = remove_insignificant_characters($msgstr);
+
 
 		# squash whitespaces
 		$msgstr =~ s/\s+/ /g;
+		next if ($msgstr eq ' ');
 
-		$msgstr = $html_stripper->parse($msgstr);
+		#next;
 
-		$msgstr =~ s/\b($look_like_number)(-$look_like_number)*\b/ /g;
-
-		$msgstr =~ s/ ($look_like_number)/' ' x length($1)/ge;
-		$msgstr =~ s/($look_like_number) /' ' x length($1)/ge;
-
-		my @words = split(/\s/, $msgstr);
+		my @words = split(/ /, $msgstr);
 
 		for my $phrase (@words) {
-			# Remove non-word characters
-			# my $phrase = $html_stripper->parse($word);
-
-			# Remove html entities
-			$phrase =~ s/&[a-z]+;//g;
-
-			$phrase = remove_beginning_and_ending('.', $phrase);
-			$phrase = remove_beginning_and_ending('"', $phrase);
-			$phrase = remove_beginning_and_ending("'", $phrase);
-			$phrase = remove_beginning_and_ending('-', $phrase);
-			$phrase = remove_beginning_and_ending('\d', $phrase, 0);
-
-			# Remove punctuations
-			$phrase =~ s/,/ /g;
-			$phrase =~ s/[!,.()?=\/><;:]/ /g;
-
-			# Remove variable substitution placeholders
-			$phrase =~ s/([^\\]*)%[0-9]+/$1 /g;
-
-			# Remove single-quotes in the middle
-			$phrase =~ s/' / /g;
-			$phrase =~ s/ '/ /g;
-
-			$phrase =~ s/\s+/ /g;
-			$phrase = remove_beginning_and_ending(' ', $phrase, 0);
-
 			if ($phrase =~ /-/) {
 				check_spelling($speller, $po, $phrase, split(/-/, $phrase));
 			}
-			check_spelling($speller, $po, $phrase, split(/\s+/, $phrase));
-			$html_stripper->eof();
+			check_spelling($speller, $po, $phrase, $phrase);
 		}
 	}
 }
@@ -1209,11 +1271,6 @@ sub bootstrap_or_exit {
 		exit 0;
 	}
 
-	my $all_options = join (',', @ARGV);
-	if (length $all_options) {
-		my ($d) = $all_options =~ m/DEBUG=([0-9]+)/;
-		$debug = $d;
-	}
 	if ($LANGUAGE =~ /help/) {
 		print_usage();
 		exit 0;
