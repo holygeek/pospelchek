@@ -1,24 +1,32 @@
 #!/usr/bin/perl -w
 use strict;
 use warnings;
+use Carp qw/croak/;
+use Config::General;
+use Config::General;
 use Data::Dumper;
-use Config::General;
-use Term::ANSIColor;
-use Config::General;
+use English;
+use File::Basename;
+use File::Slurp qw/slurp/;
+use FindBin qw($Bin);
+use Getopt::Std;
+use HTML::Strip;
 use Locale::PO 0.21;
 use Regexp::Common;
-use Getopt::Std;
-use File::Basename;
+use Term::ANSIColor;
+use Text::Aspell;
 
-# Config entries (~/.spellcheckrc)
-#
-# Entry: text_editor
-# Vars : %{filename} %{line_no}  %{wrongword}
+use lib "$Bin";
+use Spelchek;
 
 my %opts;
-my $valid_option = getopts('sd:', \%opts);
+my $valid_option = getopts('sud:', \%opts);
+# -u    'do not show unknown word list'
+# -s    'summary (wordcount) only'
+# -d n  'debug level is n'
 my $opt_summary_only = 0;
 my $opt_debug_level = 0;
+my $opt_show_unknown_word_list = 1;
 
 my $pristine_msgstr;
 my $current_msgstr_cleaned;
@@ -26,12 +34,36 @@ my $current_msgstr_stripped;
 my $punctuations_removed;
 my $digits_removed;
 my $dashes_and_quotes_removed;
+my %conf;
+
+my $LANGUAGE = $ARGV[0];
+my $LOCAL_DICT_FILE = "./dict/$LANGUAGE.txt";
+my $ABBREVIATION_FILE = "./dict/$LANGUAGE.abbr.txt";
+my $PERSONAL_DICT_FILE = undef;
+my $COMMON_DICT_FILE = './dict/common.txt';
+my $MISSPELLED_COLOR = 'white on_red';
+my $DB_COLOR = 'blue on_white';
+my $CORRECTED_COLOR  = 'black on_green';
+my %internal_dict_has;
+my $statistics_for = {
+	total_word_count => 0,
+	incorrect_word_count => 0,
+	};
+
+my @external_commands;
+my @action_list;
+my $spellcheckrc = $Spelchek::spellcheckrc;
+
+load_spellcheckrc();
 
 if (defined $opts{s}) {
 	$opt_summary_only = 1;
 }
 if (defined $opts{d}) {
 	$opt_debug_level = int($opts{d});
+}
+if (defined $opts{u}) {
+	$opt_show_unknown_word_list = 0;
 }
 
 my $me = basename(__FILE__);
@@ -41,15 +73,17 @@ if (! $valid_option || ! defined $ARGV[0] ) {
 	exit 1;
 }
 
-my $default_text_editor = "vi %{filename} +%{line} -c 'set hlsearch' -c 'normal /%{wrongword}'";
 sub print_usage {
-	my $default_text_e = $default_text_editor;
+	my $default_text_e = $conf{text_editor};
 	$default_text_e =~ s//^M/;
 
-print "
+	my $usage_text = "
+SPELLCHECK HOWTO
+----------------
+
 CUSTOMIZATION
 =============
-spelchek.pl can be customized via ~/.spellcheckrc.
+$me can be customized via ~/.spellcheckrc.
 Valid configuration entries in ~/.spellcheckrc are:
 
   1. text_editor = command arguments ...
@@ -67,6 +101,9 @@ Valid configuration entries in ~/.spellcheckrc are:
   
      This opens the file in vi, goes to the line number and moves the cursor
      to the first match of the misspelled word.
+
+	 text_editor will be used when editing po files. For editing references
+	 to msgids (e.g., #: path/to/file.html:22), see po_reference_editor below.
   
   2. <external_command>
           shortcut = <a single letter>
@@ -79,12 +116,16 @@ Valid configuration entries in ~/.spellcheckrc are:
      The 'command' entries in each <external_command> entries will be mangled
      using the following patterns:
   
-          PATTERN         REPLACEMENT
-        %{references}   The reference for the msgid in the po file.
-                        If there are more than one references, they will be
-                        joined with the comma character. Commas in the
-                        reference itself will be escaped with backslash (\,).
-        %{wrongword}    The misspelled word
+          PATTERN            REPLACEMENT
+        %{references}      The reference for the msgid in the po file.
+                           If there are more than one references, they will be
+                           joined with the comma character. Commas in the
+                           reference itself will be escaped with backslash (\,).
+
+        %{wrongword}       The misspelled word
+
+		%{po_line}  The line number of the corresponding msgstr where the 
+                           misspelled word is found.
   
      The 'continue' entry tells spellcheck whether to continue checking the next
      misspelled word, or recheck the current misspelled word. An example of
@@ -100,6 +141,15 @@ Valid configuration entries in ~/.spellcheckrc are:
   3. personal_dictionary = /path/to/your/personal/dictionary.txt
   
      If defined, spellcheck.pl will also use the specified personal_dictionary.
+
+  4. po_reference_editor = command arguments ...
+
+     The value of po_reference_editor will be mangled in the same way as the 'command'
+     entry in external_command.
+
+     Default value:
+
+       po_reference_editor.pl %{wrongword} %{po_line} %{references}
 
 To show wordcount statistics:
 =============================
@@ -132,27 +182,28 @@ Quick guide on choosing which dictionary to save unknown word to:
 
 Have fun spellchecking!
 ";
+	my $PAGER;
+	if (open $PAGER, "|less") {
+		print $PAGER $usage_text;
+		close $PAGER;
+	}
+	elsif (open $PAGER, "|more") {
+		print $PAGER $usage_text;
+		close $PAGER;
+	}
+	else {
+		print $usage_text;
+	}
 }
 
 if ($ARGV[0] eq 'ALL_SUPPORTED_LANGUAGES') {
 	print_usage();
 	exit 0;
 }
-my $LANGUAGE = $ARGV[0];
-my $LOCAL_DICT_FILE = "./dict/$LANGUAGE.txt";
-my $ABBREVIATION_FILE = "./dict/$LANGUAGE.abbr.txt";
-my $PERSONAL_DICT_FILE = undef;
-my $COMMON_DICT_FILE = './dict/common.txt';
-my $MISSPELLED_COLOR = 'white on_red'; # Same as ack's highlighting
-my $DB_COLOR = 'blue on_white';
-my $CORRECTED_COLOR  = 'black on_green';
-my %internal_dict_has;
-my $statistics_for = {};
 
-my %conf;
-my @external_commands;
-my @action_list;
-my $spellcheckrc = $ENV{HOME} . "/.spellcheckrc";
+sub notify_action {
+	Spelchek::notify_action(shift);
+}
 
 sub lowercase {
 	my $text = shift;
@@ -161,38 +212,21 @@ sub lowercase {
 }
 
 sub load_spellcheckrc {
-	if ( -f $spellcheckrc ) {
-		my $c = new Config::General($spellcheckrc);
-		%conf = $c->getall;
+	%conf = %{Spelchek::get_config()};
 
-		my $external_command_entry = $conf{external_command};
+	my $external_command_entry = $conf{external_command};
+	if (defined $external_command_entry) {
 		if (ref $external_command_entry eq 'ARRAY') {
 			@external_commands = @{$external_command_entry};
 		} else {
 			@external_commands = ($external_command_entry);
 		}
-		if (defined $conf{personal_dictionary}) {
-			$PERSONAL_DICT_FILE = $conf{personal_dictionary};
-			$PERSONAL_DICT_FILE =~ s/^~/$ENV{HOME}/;
-		}
+	}
+	if (defined $conf{personal_dictionary}) {
+		$PERSONAL_DICT_FILE = $conf{personal_dictionary};
+		$PERSONAL_DICT_FILE =~ s/^~/$ENV{HOME}/;
 	}
 }
-
-sub set_default_options {
-	if (! defined $conf{dict_dir}) {
-		$conf{dict_dir} = '.dict';
-	}
-	if (! defined $conf{text_editor}) {
-		$conf{text_editor} = $default_text_editor;
-	}
-}
-
-use File::Slurp qw/slurp/;
-
-use Carp qw/croak/;
-use English;
-use Text::Aspell;
-use HTML::Strip;
 
 sub debug {
 	my ($text, $level) = @_;
@@ -200,12 +234,6 @@ sub debug {
 	if ($opt_debug_level >= $level) {
 		print colored ['yellow on_black'], "DEBUG: " . $text;
 	}
-}
-
-sub notify_action {
-	my ($text) = @_;
-	print colored ['green'],$text;
-	print "\n";
 }
 
 sub add_to_internal_dict {
@@ -231,46 +259,28 @@ sub action_handler_ignore_all {
 }
 
 sub todo {
-	my ($text) = @_;
-	print colored ['black on_green'],"TODO: $text\n";
+	Spelchek::todo(@_);
 }
 
-sub edit_db {
-	my $meta = shift;
-	my $table = $meta->{table};
-	my $primary_key_column = $meta->{primary_key_column};
-	my $primary_key_value = $meta->{primary_key_value};
-	my $column_name = $meta->{column_name};
-	todo("Edit DB TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name");
-}
+sub join_references {
+	my $references = shift;
 
-sub edit_file {
-	my ($file_path, $line_no, $misspelled) = @_;
-
-	if (defined $conf{text_editor}) {
-		my $cmd = $conf{text_editor};
-		$cmd =~ s/%{filename}/$file_path/g;
-		$cmd =~ s/%{line}/$line_no/g;
-		$misspelled =~ s/'/\\'/g;
-		$cmd =~ s/%{wrongword}/$misspelled/g;
-		notify_action("Editing $file_path");
-		system($cmd);
-	} else {
-		print "No editor defined.\n";
-	}
+	$references =~ s/,/\\,/gxms;
+	return join(',', split(/\n/, $references));
 }
 
 sub edit_source {
-	my ($po, $misspelled) = @_;
+	# Note: The following only apply to en_US
+	my ($po, $misspelled, $po_line) = @_;
 
-	foreach my $source (get_source_meta($po)) {
-		if ($source->{type} eq 'DB') {
-			edit_db($source->{meta}, $misspelled);
-		} elsif ($source->{type} eq 'FILE') {
-			my $fullpath = $source->{meta}->{filename};
-			edit_file($fullpath, $source->{meta}->{line_no}, $misspelled);
-		}
-	}
+	my $reference  = join_references($po->reference());
+
+	my $cmd = $conf{po_reference_editor};
+	$cmd =~ s/%{wrongword}/$misspelled/g;
+	$cmd =~ s/%{po_line}/$po_line/g;
+	$cmd =~ s/%{references}/$reference/g;
+
+	system($cmd);
 }
 
 sub get_po_line {
@@ -325,15 +335,19 @@ sub get_po_line {
 sub edit_po_file {
 	my ($po, $misspelled) = @_;
 	my $line_no = get_po_line($po->msgid(), 'for msgstr');
-	edit_file("$LANGUAGE.po", $line_no, $misspelled);
+	my $file = "$LANGUAGE.po";
+	notify_action("Editing $file");
+	Spelchek::edit_file($conf{text_editor}, "$LANGUAGE.po", $line_no, $misspelled);
 }
 
 sub action_handler_edit_source {
 	my ($speller, $misspelled, $po, $original_word) = @_;
 	if ($LANGUAGE eq 'en_US') {
-		edit_source($po, $misspelled);
+		my $po_line = get_po_line($po->msgid());
+		edit_source($po, $misspelled, $po_line);
 	} else {
-		edit_po_file($po, $original_word);
+		my $po_line = get_po_line($po->msgid(), 'for msgstr');
+		edit_po_file($po, $original_word, $po_line);
 	}
 }
 
@@ -417,20 +431,61 @@ sub action_handler_add_to_abbreviation_dict {
 	add_to_internal_dict($misspelled, $case_sensitive);
 }
 
-sub show_statistics {
-	print "Summary for $LANGUAGE:\n";
-	my $c = 0;
-	foreach my $key (sort keys %{$statistics_for->{replacements}}) {
-		my $frequency = $statistics_for->{replacements}->{$key};
-		$c += $frequency;
-		printf "  $key: $frequency time";
-		if ($frequency > 1) {
-			print "s";
-		}
-		print ".\n";
+sub show_unknown_word_list {
+	my @unknown_words = @_;
+	my @frequency;
+	print_header(' UNKNOWN WORDS ');
+	print "NO.  FREQUENCY  UNKNOWN WORD\n";
+	foreach my $misspelled (@unknown_words) {
+		push @frequency,
+			 {
+				 frequency => $statistics_for->{misspelled_word}->{$misspelled},
+				 misspelled => $misspelled,
+			 }
 	}
-	print "Total $c replacements.\n"; 
-	print "(Excludes edits)\n";
+	my $total_occurrence = 0;
+	my $c = 1;
+	foreach my $entry (sort { $a->{frequency} <=> $b->{frequency} } @frequency) {
+		printf  "%-3d %5d       %s\n", $c, $entry->{frequency}, $entry->{misspelled} ;
+		$total_occurrence += $entry->{frequency};
+		$c += 1;
+	}
+}
+
+sub show_statistics {
+	if ($opt_summary_only) {
+		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
+
+		if ($statistics_for->{incorrect_word_count}) {
+			show_unknown_word_list(@unknown_words) if $opt_show_unknown_word_list;
+		}
+
+		print_header(" $LANGUAGE ");
+		printf "  %7d words,\n", $statistics_for->{total_word_count};
+		printf "  %7d unknown, %d occurrence",
+				scalar @unknown_words,
+				$statistics_for->{incorrect_word_count},
+				;
+		if ($statistics_for->{incorrect_word_count} > 1) {
+			print 's';
+		}
+		print "\n";
+	}
+	else {
+		print_header(' SUMMARY ');
+		my $c = 0;
+		foreach my $key (sort keys %{$statistics_for->{replacements}}) {
+			my $frequency = $statistics_for->{replacements}->{$key};
+			$c += $frequency;
+			printf "  $key: $frequency time";
+			if ($frequency > 1) {
+				print "s";
+			}
+			print ".\n";
+		}
+		print "  Total $c replacements.\n"; 
+		print "  (Excludes edits)\n";
+	}
 }
 
 sub action_handler_exit {
@@ -621,7 +676,7 @@ sub show_context_lines {
 	my $found_a_match = 0;
 
 	# Earlier, we replaced all [!,().] with a space
-	$misspelled =~ s/ /./g;
+	# $misspelled =~ s/ /./g;
 
 	my $line_count_after_match = 0;
 
@@ -686,48 +741,6 @@ sub show_context_lines {
 
 }
 
-my $database_reference = "lib/I18N/db/([A-Za-z]+).db:([a-z_]+)=([0-9]+):([a-z_]+)";
-sub get_source_meta {
-	my $po = shift;
-	my $reference = $po->reference();
-	# $reference look like this:
-	#   www/javascript/context_help.js:464
-	#   lib/I18N/db/QuestionList.db:question_id=109:question
-	my @source_meta;
-	foreach (split(/\n/, $reference)) {
-		if ( my (
-					$table,
-					$primary_key_column,
-					$primary_key_value,
-					$column_name
-				) = $_ =~ m#$database_reference#
-		) {
-			push @source_meta, 
-					{
-						type => 'DB',
-						meta => {
-							table => $table,
-							primary_key_column => $primary_key_column,
-							primary_key_value => $primary_key_value,
-							column_name => $column_name,
-						}
-					};
-		}
-		else { 
-			my ($filename, $line_no) = split /:/;
-			push @source_meta, 
-					{
-						type => 'FILE',
-						meta => {
-							filename => $filename,
-							line_no  => $line_no,
-						}
-					};
-		}
-	}
-	return @source_meta;
-}
-
 sub show_db_content {
 	my ($misspelled, $meta) = @_;
 
@@ -746,7 +759,7 @@ sub show_sources {
 	my ($misspelled, $po) = @_;
 	
 	# print "Showing sources fo \'$misspelled\'\n";
-	foreach my $source (get_source_meta($po)) {
+	foreach my $source (Spelchek::get_source_meta($po->reference())) {
 		if ($source->{type} eq 'DB') {
 			show_db_content($misspelled, $source->{meta});
 		} elsif ($source->{type} eq 'FILE') {
@@ -763,15 +776,28 @@ sub show_sources {
 }
 
 sub replace_db_content {
-	my ($meta, $misspelled, $suggested_word) = @_;
-	my $table = $meta->{table};
-	my $primary_key_column = $meta->{primary_key_column};
-	my $primary_key_value = $meta->{primary_key_value};
-	my $column_name = $meta->{column_name};
-	print colored ['black on_yellow'],
-		  "TODO Replace content $misspelled with $suggested_word in\n";
-	print colored ['black on_yellow'],
-		  "TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
+	# Note: The following only apply to en_US
+	my ($meta, $po_line, $misspelled, $suggested_word) = @_;
+
+	# print colored ['black on_yellow'],
+	#	  "TODO Replace content $misspelled with $suggested_word in\n";
+	Spelchek::edit_mysql_update_file(
+			$conf{text_editor},
+			$meta,
+			$misspelled,
+			$po_line,
+			$suggested_word
+		);
+
+	#print colored ['black on_yellow'],
+		  #"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
+
+	my $sql_line_no = Spelchek::get_sql_line_for($meta);
+	return replace_first_occurrence(
+			$Spelchek::sql_file,
+			$sql_line_no,
+			$misspelled,$suggested_word
+		);
 }
 
 sub replace_first_occurrence {
@@ -786,7 +812,7 @@ sub replace_first_occurrence {
 	for my $c ($line_no - 1 .. scalar @lines - 1) {
 		my $orig_line = $lines[$c];
 		if ($lines[$c] =~ /[^[:alpha:]]$misspelled[^[:alpha:]]/) {
-			$lines[$c] =~ s/([^[:alpha:]])$misspelled([^[:alpha:]])/$1$suggested_word$2/;
+			$lines[$c] =~ s/([^[:alpha:]]*)$misspelled([^[:alpha:]]*)/$1$suggested_word$2/;
 			if ($lines[$c] ne $orig_line) {
 				$replacement_done_at = $c + 1;
 				$progress_report
@@ -842,9 +868,20 @@ sub action_handler_replace_with_suggested {
 
 	if ($LANGUAGE eq 'en_US') {
 		# Replace in the original source files where c.loc is done
-		foreach my $source (get_source_meta($po)) {
+		foreach my $source (Spelchek::get_source_meta($po->reference())) {
 			if ($source->{type} eq 'DB') {
-				replace_db_content($source->{meta}, $original_word, $suggested_word);
+				my $line_no = get_po_line($po->msgid());
+				my $sql_line_no_replaced = replace_db_content($source->{meta}, $line_no, $original_word, $suggested_word);
+				if ($sql_line_no_replaced) {
+					$statistics_for
+						->{replacements}
+						->{"$original_word -> $suggested_word"} += 1;
+					my $meta = {
+							filename => $Spelchek::sql_file,
+							line_no  => $sql_line_no_replaced,
+						};
+					report_on_text_replacement($meta, $original_word, $suggested_word, $sql_line_no_replaced);
+				}
 			} elsif ($source->{type} eq 'FILE') {
 				if (my $line_no = replace_text_content($source->{meta}, $original_word, $suggested_word)) {
 					$statistics_for
@@ -894,10 +931,7 @@ sub show_msgid_and_msgstr {
 sub action_handler_external_command {
 	my ($cmd, $misspelled, $po) = @_;
 
-	my $references = $po->reference();
-	$references =~ s/,/\\,/gxms;
-
-	$references = join(',', split(/\n/, $references));
+	my $references = join_references($po->reference());
 	notify_action("Running external command [$cmd]");
 	$cmd =~ s/%{references}/$references/g;
 	$cmd =~ s/%{wrongword}/$misspelled/g;
@@ -908,7 +942,13 @@ sub action_handler_external_command {
 sub handle_unknown_word {
 	my ($speller, $misspelled, $po, $original_word) = @_;
 
+	$statistics_for->{incorrect_word_count} += 1;
+	$statistics_for->{misspelled_word}->{$misspelled} += 1;
+
+	return 0 if $opt_summary_only;
+
 	my $check_again = 0;
+
 
 	print "\n";
 
@@ -992,23 +1032,14 @@ sub is_in_internal_dict {
 
 sub check_spelling {
 	my ($speller, $po, $original_word, @words) = @_;
-	my $valid_phrase = 1;
-	#my $look_like_number = "[+%\$-]{0,1}$RE{num}{real}%{0,1}";
-	foreach my $w (@words) {
-		# if (
-		# 	   $w =~ /^($look_like_number)(-$look_like_number)*$/
-		#    ) {
-		# 	# Skip numbers, percentage, and their ranges, variable placeholders (%1)
-		# 	next;
-		# }
+	my $incorrect_word_count = 0;
 
+	foreach my $w (@words) {
 		if (is_known_abbreviation($w)) {
-			$statistics_for->{total_word_count} += 1;
 			debug("Found in abbreviation: $w\n", 2);
 			next;
 		}
 		if (is_in_internal_dict($w)) {
-			$statistics_for->{total_word_count} += 1;
 			debug("Found in internal (local+global) dict: $w\n", 2);
 			next;
 		}
@@ -1016,9 +1047,7 @@ sub check_spelling {
 		debug ("Checking [$w]\n", 3);
 
 		if (! $speller->check($w)) {
-			$statistics_for->{total_word_count} += 1;
-			$statistics_for->{incorrect_word_count} += 1;
-			$valid_phrase = 0;
+			$incorrect_word_count += 1;
 
 			my $c = 0;
 			while ( handle_unknown_word($speller, $w, $po, $original_word) ) {
@@ -1032,11 +1061,8 @@ sub check_spelling {
 				$c += 1;
 			}
 		}
-		else {
-			$statistics_for->{correct_word_count} += 1;
-		}
 	}
-	return $valid_phrase;
+	return $incorrect_word_count;
 }
 
 sub load_local_dict {
@@ -1044,7 +1070,6 @@ sub load_local_dict {
 
 	$case_sensitive ||= 0;
 	$add_to_suggestions ||= 1;
-
 
 	return if ( ! -f $dict_file );
 
@@ -1076,6 +1101,15 @@ sub remove_beginning_and_ending {
 		$text =~ s/$to_remove+$//;
 	}
 	return $text;
+}
+
+sub remove_punctuations_but_not {
+	my ($msgstr, $but_not) = @_;
+
+	my $removed = '';
+	$msgstr =~ s/(([$but_not])|([[:punct:]]))/$removed .= $3 if defined $3;$2 || ' ';/ge;
+
+	return ($msgstr, $removed);
 }
 
 sub remove_punctuations_but_not_dash_and_quote {
@@ -1131,7 +1165,15 @@ sub remove_insignificant_characters {
 	$current_msgstr_stripped = $msgstr;
 
 
-	($msgstr, $punctuations_removed) = remove_punctuations_but_not_dash_and_quote($msgstr);
+	# ($msgstr, $punctuations_removed) = remove_punctuations_but_not_dash_and_quote($msgstr);
+	if ($LANGUAGE eq 'en_US') {
+		# This is so that we can catch mistakes like 
+		# 'State-of-art', which should be 'State-of-the-art'
+		($msgstr, $punctuations_removed) = remove_punctuations_but_not($msgstr, "-'");
+	}
+	else {
+		($msgstr, $punctuations_removed) = remove_punctuations_but_not($msgstr, "'");
+	}
 	($msgstr, $digits_removed)       = remove_digits($msgstr);
 	($msgstr, $dashes_and_quotes_removed) = remove_beginning_and_ending_dashes_and_quotes($msgstr);
 
@@ -1164,11 +1206,6 @@ sub spelchek {
 					);
 	}
 
-
-	# %1, $1.5
-	my $look_like_number = "[+%\$-]{0,1}".$RE{num}{real} . "\%{0,1}";
-
-	print "Language: $lang\n";
 	my $count = -1;
 	for my $po (@$messages_aref) {
 		$count += 1;
@@ -1184,18 +1221,20 @@ sub spelchek {
 
 		$msgstr = remove_insignificant_characters($msgstr);
 
-
 		# squash whitespaces
 		$msgstr =~ s/\s+/ /g;
 		next if ($msgstr eq ' ');
-
-		#next;
 
 		my @words = split(/ /, $msgstr);
 
 		for my $phrase (@words) {
 			if ($phrase =~ /-/) {
-				check_spelling($speller, $po, $phrase, split(/-/, $phrase));
+				my @individual_words = split(/-/, $phrase);
+				$statistics_for ->{total_word_count} += scalar @individual_words;
+				check_spelling($speller, $po, $phrase, @individual_words);
+			}
+			else {
+				$statistics_for->{total_word_count} += 1;
 			}
 			check_spelling($speller, $po, $phrase, $phrase);
 		}
@@ -1303,9 +1342,7 @@ sub thing_doer {
 
 bootstrap_or_exit();
 
-load_spellcheckrc();
 load_action_list();
 
-set_default_options();
 thing_doer($LANGUAGE);
 cleanup();
