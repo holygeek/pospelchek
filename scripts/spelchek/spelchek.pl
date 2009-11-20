@@ -483,8 +483,17 @@ sub show_statistics {
 			}
 			print ".\n";
 		}
-		print "  Total $c replacements.\n"; 
-		print "  (Excludes edits)\n";
+		if ($c == 0) {
+			my $total_word_count = $statistics_for->{total_word_count};
+			if ($total_word_count > 0) {
+				print "  Excellent! $total_word_count words, with 0 misspelling. :)\n";
+			} else {
+				print "  $LANGUAGE has 0 translation.\n";
+			}
+		} else {
+			print "  Total $c replacements.\n"; 
+			print "  (Excludes edits)\n";
+		}
 	}
 }
 
