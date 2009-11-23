@@ -53,6 +53,7 @@ my $statistics_for = {
 my @external_commands;
 my @action_list;
 my $spellcheckrc = $Spelchek::spellcheckrc;
+my $GIVEN_TEXT = '';
 
 load_spellcheckrc();
 
@@ -604,12 +605,20 @@ sub get_action {
 		print "Action: ";
 		$action = <STDIN>;
 		chomp $action;
+		$action =~ s/^\s+//;
+		$action =~ s/\s+$//;
+
 		if (length $action == 0) {
 			$action = 'i';
 		}
 
 		if ($action =~ /^[0-9]+$/) {
 			return $action;
+		}
+		if ($action =~ /^r [^\s]/) {
+			my ($a, $text) = split(/\s/, $action, 2);
+			$GIVEN_TEXT = $text;
+			$action = $a;
 		}
 	}
 
@@ -962,6 +971,22 @@ sub replace_in_po_file {
 	else {
 		$success = 0;
 	}
+
+	return $success;
+}
+
+sub action_handler_replace_with_given_text {
+	my ($speller, $misspelled, $po) = @_;
+
+	if (length $GIVEN_TEXT == 0) {
+		print colored ['white on_red'], "Usage: r newword\n";
+
+		return 0;
+	}
+
+	my $suggested_word = $GIVEN_TEXT;
+
+	my $success = action_handler_replace_with_suggested($misspelled, $suggested_word, $po);
 
 	return $success;
 }
@@ -1345,6 +1370,8 @@ sub load_action_list {
 					handler => \&action_handler_add_to_common_dict },
 			b => { text => "Add to $ABBREVIATION_FILE (case!)",
 					handler => \&action_handler_add_to_abbreviation_dict },
+			r => { text => 'Replace <with this text>',
+					handler => \&action_handler_replace_with_given_text },
 			q => { text => 'Exit',
 					handler => \&action_handler_exit },
 			e => { text => 'Edit',
