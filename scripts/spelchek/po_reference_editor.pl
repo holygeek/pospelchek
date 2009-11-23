@@ -9,6 +9,8 @@ use Term::ANSIColor;
 
 use lib "$Bin";
 use Spelchek;
+my $spellcheck_fix_sql_file = $Spelchek::spellcheck_fix_sql_file;
+my $sql_file = $Spelchek::sql_file;
 
 my %conf = %{Spelchek::get_config()};
 
@@ -28,8 +30,28 @@ sub get_sql_update_statement {
 }
 
 sub edit_db {
-	Spelchek::edit_mysql_update_file($conf{text_editor}, @_);
-	Spelchek::edit_sql($conf{text_editor}, @_);
+	my ($meta, $misspelled, $po_line) = @_;
+	Spelchek::add_MySQL_update_statement_to_file(
+			$spellcheck_fix_sql_file,
+			$meta,
+			$misspelled,
+			$po_line,
+		);
+
+	Spelchek::edit_file(
+			$conf{text_editor},
+			$spellcheck_fix_sql_file,
+			Spelchek::get_last_line_no($spellcheck_fix_sql_file),
+			$misspelled
+		);
+
+	my $sql_line_no = Spelchek::get_sql_line_for($meta);
+	Spelchek::edit_file(
+			$conf{text_editor},
+			$sql_file,
+			$sql_line_no,
+			$misspelled
+		);
 }
 
 if (scalar @ARGV != 3) {

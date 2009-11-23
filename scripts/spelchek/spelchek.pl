@@ -256,6 +256,8 @@ sub action_handler_ignore_all {
 
 	add_to_internal_dict($misspelled);
 	notify_action "Ignoring '$misspelled'.";
+
+	return 1;
 }
 
 sub todo {
@@ -269,7 +271,7 @@ sub join_references {
 	return join(',', split(/\n/, $references));
 }
 
-sub edit_source {
+sub edit_en_US_source {
 	# Note: The following only apply to en_US
 	my ($po, $misspelled, $po_line) = @_;
 
@@ -280,7 +282,7 @@ sub edit_source {
 	$cmd =~ s/%{po_line}/$po_line/g;
 	$cmd =~ s/%{references}/$reference/g;
 
-	system($cmd);
+	return Spelchek::run_cmd($cmd);
 }
 
 sub get_po_line {
@@ -342,13 +344,17 @@ sub edit_po_file {
 
 sub action_handler_edit_source {
 	my ($speller, $misspelled, $po, $original_word) = @_;
+	my $success = 1;
+
 	if ($LANGUAGE eq 'en_US') {
 		my $po_line = get_po_line($po->msgid());
-		edit_source($po, $misspelled, $po_line);
+		$success = edit_en_US_source($po, $misspelled, $po_line);
 	} else {
 		my $po_line = get_po_line($po->msgid(), 'for msgstr');
-		edit_po_file($po, $original_word, $po_line);
+		$success = edit_po_file($po, $original_word, $po_line);
 	}
+
+	return $success;
 }
 
 sub create_local_dict_file {
@@ -483,7 +489,7 @@ sub show_statistics {
 			}
 			print ".\n";
 		}
-		if ($c == 0) {
+		if ($statistics_for->{incorrect_word_count} == 0) {
 			my $total_word_count = $statistics_for->{total_word_count};
 			if ($total_word_count > 0) {
 				print "  Excellent! $total_word_count words, with 0 misspelling. :)\n";
@@ -784,19 +790,35 @@ sub show_sources {
 	}
 }
 
-sub replace_db_content {
-	# Note: The following only apply to en_US
+sub replace_en_US_db_content {
 	my ($meta, $po_line, $misspelled, $suggested_word) = @_;
 
-	# print colored ['black on_yellow'],
-	#	  "TODO Replace content $misspelled with $suggested_word in\n";
-	Spelchek::edit_mysql_update_file(
-			$conf{text_editor},
+	my $spellcheck_fix_sql_file = $Spelchek::spellcheck_fix_sql_file;
+	my ($original, $sql_statement)
+		= Spelchek::add_MySQL_update_statement_to_file(
+			$spellcheck_fix_sql_file,
 			$meta,
 			$misspelled,
 			$po_line,
 			$suggested_word
 		);
+
+	print highlight($MISSPELLED_COLOR, $misspelled, $original) . "\n";
+	print highlight($CORRECTED_COLOR,  $suggested_word, $sql_statement) . "\n";
+	notify_action(
+		  "'$misspelled' -> '$suggested_word' in "
+		. $spellcheck_fix_sql_file
+		. ':'
+		. Spelchek::get_last_line_no($spellcheck_fix_sql_file)
+		)
+		;
+	# Spelchek::edit_MySQL_update_file(
+	# 		$conf{text_editor},
+	# 		$meta,
+	# 		$misspelled,
+	# 		$po_line,
+	# 		$suggested_word
+	# 	);
 
 	#print colored ['black on_yellow'],
 		  #"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
@@ -872,51 +894,93 @@ sub report_on_text_replacement {
 		;
 }
 
-sub action_handler_replace_with_suggested {
-	my ($original_word, $suggested_word, $po)= @_;
+sub replace_in_en_US_sources {
+	my ($original_word, $suggested_word, $po) = @_;
+	my $success = 1;
 
-	if ($LANGUAGE eq 'en_US') {
-		# Replace in the original source files where c.loc is done
-		foreach my $source (Spelchek::get_source_meta($po->reference())) {
-			if ($source->{type} eq 'DB') {
-				my $line_no = get_po_line($po->msgid());
-				my $sql_line_no_replaced = replace_db_content($source->{meta}, $line_no, $original_word, $suggested_word);
-				if ($sql_line_no_replaced) {
-					$statistics_for
-						->{replacements}
-						->{"$original_word -> $suggested_word"} += 1;
-					my $meta = {
-							filename => $Spelchek::sql_file,
-							line_no  => $sql_line_no_replaced,
-						};
-					report_on_text_replacement($meta, $original_word, $suggested_word, $sql_line_no_replaced);
-				}
-			} elsif ($source->{type} eq 'FILE') {
-				if (my $line_no = replace_text_content($source->{meta}, $original_word, $suggested_word)) {
-					$statistics_for
-						->{replacements}
-						->{"$original_word -> $suggested_word"} += 1;
-					report_on_text_replacement($source->{meta}, $original_word, $suggested_word, $line_no);
-				}
+	foreach my $source (Spelchek::get_source_meta($po->reference())) {
+		if ($source->{type} eq 'DB') {
+			my $line_no = get_po_line($po->msgid());
+			my $sql_line_no_replaced
+				= replace_en_US_db_content(
+						$source->{meta},
+						$line_no,
+						$original_word,
+						$suggested_word
+					);
+			if ($sql_line_no_replaced) {
+				$statistics_for
+					->{replacements}
+				->{"$original_word -> $suggested_word"} += 1;
+				my $meta = {
+					filename => $Spelchek::sql_file,
+					line_no  => $sql_line_no_replaced,
+				};
+				report_on_text_replacement($meta,
+						$original_word,
+						$suggested_word,
+						$sql_line_no_replaced
+					);
+			} else {
+				$success = 0;
+			}
+		} elsif ($source->{type} eq 'FILE') {
+			if (my $line_no = replace_text_content($source->{meta}, $original_word, $suggested_word)) {
+				$statistics_for
+					->{replacements}
+				->{"$original_word -> $suggested_word"} += 1;
+				report_on_text_replacement($source->{meta}, $original_word, $suggested_word, $line_no);
+			}
+			else {
+				$success = 0;
 			}
 		}
 	}
-	else {
-		# Replace in $LANGUAGE.po file
-		my $line_no = get_po_line($po->msgid(), 'for msgstr');
-		my $meta = {
-				filename => "lib/I18N/$LANGUAGE.po",
-				line_no  => $line_no,
-			};
-		if (my $line_no = replace_text_content($meta, $original_word, $suggested_word)) {
-			report_on_text_replacement($meta, $original_word, $suggested_word, $line_no);
-		}
+
+	return $success;
+}
+
+sub replace_in_po_file {
+	my ($original_word, $suggested_word, $po) = @_;
+
+	my $success = 1;
+
+	my $line_no = get_po_line($po->msgid(), 'for msgstr');
+	my $meta = {
+		filename => "lib/I18N/$LANGUAGE.po",
+		line_no  => $line_no,
+	};
+	if (my $line_no = replace_text_content($meta, $original_word, $suggested_word)) {
+		report_on_text_replacement($meta, $original_word, $suggested_word, $line_no);
+		$success = 1;
 	}
+	else {
+		$success = 0;
+	}
+
+	return $success;
+}
+
+sub action_handler_replace_with_suggested {
+	my ($original_word, $suggested_word, $po)= @_;
+	my $success;
+
+	if ($LANGUAGE eq 'en_US') {
+		# Replace in the original source files where c.loc is done
+		$success = replace_in_en_US_sources($original_word, $suggested_word, $po);
+	}
+	else {
+		$success = replace_in_po_file($original_word, $suggested_word, $po);
+	}
+
+	return $success;
 }
 
 sub action_handler_ignore_once {
 	my ($speller, $misspelled, $po) = @_;
 	notify_action("[$misspelled] ignored once.");
+
+	return 1;
 }
 
 sub show_msgid_and_msgstr {
@@ -945,7 +1009,10 @@ sub action_handler_external_command {
 	$cmd =~ s/%{references}/$references/g;
 	$cmd =~ s/%{wrongword}/$misspelled/g;
 	debug("External command is [$cmd]\n");
-	system($cmd);
+
+	my $success = my_system($cmd);
+
+	return $success;
 }
 
 sub handle_unknown_word {
@@ -954,10 +1021,9 @@ sub handle_unknown_word {
 	$statistics_for->{incorrect_word_count} += 1;
 	$statistics_for->{misspelled_word}->{$misspelled} += 1;
 
-	return 0 if $opt_summary_only;
+	my $success = 1;
 
-	my $check_again = 0;
-
+	return $success if $opt_summary_only;
 
 	print "\n";
 
@@ -1010,22 +1076,27 @@ sub handle_unknown_word {
 	print_header('ACTIONS');
 	my $action = get_action();
 
+	$success = 0;
+
 	if (defined $suggested_for->{$action}) {
 		my $suggested_word = $suggested_for->{$action};
-		action_handler_replace_with_suggested($original_word, $suggested_word, $po);
+		$success = action_handler_replace_with_suggested($original_word, $suggested_word, $po);
 	}
 	elsif (ref $action->{handler} eq 'CODE') {
-		$action->{handler}->($speller, $misspelled, $po, $original_word);
+		$success = $action->{handler}->($speller, $misspelled, $po, $original_word);
 	}
 	elsif ($action->{external}) {
 		my $external_command = $action->{handler};
-		action_handler_external_command($external_command, $misspelled, $po);
-		$check_again = $action->{'continue'} || 1;
+		$success = action_handler_external_command($external_command, $misspelled, $po);
+		if ($success) {
+			$success = $action->{'continue'} || 1;
+		}
 	}
 	else {
 		print colored ['white on_blue'], "TODO: Action not implemented: '", $action->{text}, "'\n";
 	}
-	return $check_again;
+
+	return $success;
 }
 
 sub is_known_abbreviation {
@@ -1059,7 +1130,7 @@ sub check_spelling {
 			$incorrect_word_count += 1;
 
 			my $c = 0;
-			while ( handle_unknown_word($speller, $w, $po, $original_word) ) {
+			while ( ! handle_unknown_word($speller, $w, $po, $original_word) ) {
 				if ($c > 10) {
 					print colored ['black on_yellow'],
 						  "The 'continue' action is hardcoded to stop at 10 iteractions\n.";
