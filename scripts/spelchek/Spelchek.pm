@@ -269,7 +269,10 @@ sub add_MySQL_update_statement_to_file {
 	}
 	$msgid =~ s/'/''/g;
 
-	print $SQL "-- spellcheck.pl corrections\n" if $insert_header;
+	if ($insert_header) {
+		my $date = localtime;
+		print $SQL "-- spellcheck.pl corrections $date\n";
+	}
 
 	my $first_part =  sprintf(qq(UPDATE `%s` SET `%s`='),
 			                            $table, $column_name);
