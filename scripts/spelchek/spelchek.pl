@@ -78,6 +78,12 @@ sub print_usage {
 	my $default_text_e = $conf{text_editor};
 	$default_text_e =~ s//^M/;
 
+	if ($opt_summary_only) {
+		print "Please specify a language. e.g.:\n";
+		print "make wordcount LANGUAGE=en_US\n";
+		return;
+	}
+
 	my $usage_text = "
 SPELLCHECK HOWTO
 ----------------
