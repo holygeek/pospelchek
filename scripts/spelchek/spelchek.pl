@@ -459,6 +459,8 @@ sub show_unknown_word_list {
 }
 
 sub show_statistics {
+	print_header(' PO FILE ');
+	print "  $LANGUAGE.po\n";
 	if ($opt_summary_only) {
 		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
 
