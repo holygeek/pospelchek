@@ -672,8 +672,10 @@ sub get_action {
 		if ($action =~ /^[0-9]+$/) {
 			return $action;
 		}
-		if ($action =~ /^r\s+[^\s]/) {
+		if ($action =~ /^r/) {
 			my ($a, $text) = split(/\s/, $action, 2);
+			$text =~ s/^\s+//;
+			$text =~ s/\s+$//;
 			$GIVEN_TEXT = $text;
 			$action = $a;
 		}
