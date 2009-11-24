@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 use strict;
 use warnings;
 use Carp qw/croak/;
@@ -11,6 +11,7 @@ use File::Slurp qw/slurp/;
 use FindBin qw($Bin);
 use Getopt::Std;
 use HTML::Strip;
+use IO::Prompt;
 use Locale::PO 0.21;
 use Regexp::Common;
 use Term::ANSIColor;
@@ -588,6 +589,58 @@ sub sort_and_remove_duplicate {
 	close $DICT;
 }
 
+sub read_text {
+	my $c = shift;
+	my $text = '';
+	# my $default = ''; #chr(127);
+	my $erase_char = chr(127);
+	while (length $c) {
+		if ($c ne $erase_char) {
+			$text .= $c;
+			print $c;
+		}
+		else {
+			if (length $text) {
+				substr($text, -1) = '';
+				print "\b \b";
+			}
+			if (length $text == 0) {
+				return read_one_char_or_a_number();
+			}
+		}
+		$c = prompt(-'prompt' => '',
+				-tty,
+				-onechar,
+				#-default => $default,
+				#-newline => '',
+				-echo => '',
+				);
+	}
+	return $text;
+}
+
+sub read_one_char {
+	my $c;
+	$c = prompt(-'prompt' => '', -tty, -onechar, -echo => '');
+	return $c;
+}
+
+sub read_one_char_or_a_number {
+	
+	my $c = read_one_char();
+	if ($c =~ /^\d$/) {
+		return read_text($c);
+	}
+
+	if ($c eq 'r') {
+		return read_text($c);
+	}
+
+	print "\n";
+	return $c;
+}
+
+
 sub get_action {
 	my %action_for =  @action_list;
 
@@ -609,10 +662,8 @@ sub get_action {
 			print "\n";
 		}
 		print "Action: ";
-		$action = <STDIN>;
-		chomp $action;
-		$action =~ s/^\s+//;
-		$action =~ s/\s+$//;
+
+		$action = read_one_char_or_a_number();
 
 		if (length $action == 0) {
 			$action = 'i';
@@ -621,7 +672,7 @@ sub get_action {
 		if ($action =~ /^[0-9]+$/) {
 			return $action;
 		}
-		if ($action =~ /^r [^\s]/) {
+		if ($action =~ /^r\s+[^\s]/) {
 			my ($a, $text) = split(/\s/, $action, 2);
 			$GIVEN_TEXT = $text;
 			$action = $a;
@@ -1046,7 +1097,7 @@ sub action_handler_external_command {
 	$cmd =~ s/%{wrongword}/$misspelled/g;
 	debug("External command is [$cmd]\n");
 
-	my $success = my_system($cmd);
+	my $success = Spelchek::run_cmd($cmd);
 
 	return $success;
 }
@@ -1366,7 +1417,7 @@ sub installed {
 
 sub load_action_list {
 	@action_list = (
-			i => { text => 'Ignore once (default)',
+			i => { text => 'Ignore once',
 					handler => \&action_handler_ignore_once },
 			I => { text => 'Ignore all',
 					handler => \&action_handler_ignore_all },
@@ -1412,6 +1463,44 @@ sub load_action_list {
 	}
 }
 
+sub confirm_en_US_po_file_is_uptodate_or_exit {
+	print "
+For en_US, the correct operation of spelchek.pl is critically dependent on
+the up-to-date status of $LANGUAGE.po. If the $LANGUAGE.po is not up-to-date,
+the spelling corrections is not guaranteed to be done correctly.";
+
+	my $answer = '';
+	my $acceptable_answer = 'cgq';
+	while ($answer !~ /^[$acceptable_answer]$/i) {
+		if ($answer ne '') {
+			print "\n\nSorry, my response is limited. Please specify one of c/g/q.";
+		}
+		print "
+
+  c) The $LANGUAGE.po is already up to date, [c]ontinue.
+  g) Automatically run 'make [g]ettext LANGUAGE=$LANGUAGE' to update $LANGUAGE.po.
+  q) [Q]uit.
+
+Your choice: ";
+
+		$answer = read_one_char();
+	}
+
+	print "$answer\n";
+
+	$answer = lc ($answer);
+
+	if ($answer eq 'c') {
+		return;
+	}
+	if ($answer eq 'g') {
+		system("make gettext LANGUAGE=$LANGUAGE");
+		print "Done running 'make gettext LANGUAGE=$LANGUAGE'\n";
+		return;
+	}
+	exit 0;
+}
+
 sub bootstrap_or_exit {
 	my %need = (
 			ack => 'sudo apt-get install ack-grep',
@@ -1432,6 +1521,10 @@ sub bootstrap_or_exit {
 		print_usage();
 		exit 0;
 	}	
+
+	if ($LANGUAGE eq 'en_US') {
+		confirm_en_US_po_file_is_uptodate_or_exit();
+	}
 }
 
 sub cleanup {
