@@ -1524,7 +1524,7 @@ sub bootstrap_or_exit {
 		exit 0;
 	}	
 
-	if ($LANGUAGE eq 'en_US') {
+	if ($LANGUAGE eq 'en_US' && ! $opt_summary_only) {
 		confirm_en_US_po_file_is_uptodate_or_exit();
 	}
 }
