@@ -1084,15 +1084,9 @@ sub show_msgid_and_msgstr {
 	print ' ';
 	print $po->msgid();
 	print "\n";
-	# debug "ACK PATTERN is '$word'\n";
 	print colored ['black on_green'], "msgstr";
 	print ' ';
-	open my $ACK, 
-		 "|ACK_COLOR_MATCH='$MISSPELLED_COLOR' "
-		 . "ack -1 --literal --word-regexp --color --passthru '$word'"
-		or die "Could not run ack: $OS_ERROR";
-	print $ACK $po->msgstr();
-	close $ACK;
+	print highlight($MISSPELLED_COLOR, $word, $po->msgstr());
 	print "\n";
 }
 
