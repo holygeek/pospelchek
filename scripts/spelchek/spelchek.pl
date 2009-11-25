@@ -1093,6 +1093,11 @@ sub action_handler_replace_with_suggested {
 	}
 	else {
 		$success = replace_in_po_file($original_word, $suggested_word, $po);
+		if ($success) {
+			my $msgstr = $po->msgstr();
+			$msgstr = replace_misspelling($original_word, $suggested_word, $msgstr);
+			$po->msgstr($msgstr);
+		}
 	}
 
 	return $success;
