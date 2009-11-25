@@ -49,6 +49,7 @@ my %internal_dict_has;
 my $statistics_for = {
 	total_word_count => 0,
 	incorrect_word_count => 0,
+	ignored_word_count => 0,
 	};
 
 my @external_commands;
@@ -266,6 +267,10 @@ sub action_handler_ignore_all {
 
 	add_to_internal_dict($misspelled);
 	notify_action "Ignoring '$misspelled'.";
+	if (! defined $statistics_for->{ignored_word}->{$misspelled}) {
+		$statistics_for->{ignored_word_count} += 1;
+	}
+	$statistics_for->{ignored_word}->{$misspelled} += 1;
 
 	return 1;
 }
@@ -447,15 +452,15 @@ sub action_handler_add_to_abbreviation_dict {
 	add_to_internal_dict($misspelled, $case_sensitive);
 }
 
-sub show_unknown_word_list {
-	my @unknown_words = @_;
+sub show_unknown_word_list_statistics {
+	my ($header, $stat_key, @unknown_words) = @_;
 	my @frequency;
-	print_header(' UNKNOWN WORDS ');
-	print "NO.  FREQUENCY  UNKNOWN WORD\n";
+	print_header(" $header ");
+	print "NO.  FREQUENCY  $header\n";
 	foreach my $misspelled (@unknown_words) {
 		push @frequency,
 			 {
-				 frequency => $statistics_for->{misspelled_word}->{$misspelled},
+				 frequency => $statistics_for->{$stat_key}->{$misspelled},
 				 misspelled => $misspelled,
 			 }
 	}
@@ -473,9 +478,13 @@ sub show_statistics {
 	print "  $LANGUAGE.po\n";
 	if ($opt_summary_only) {
 		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
-
-		if ($statistics_for->{incorrect_word_count}) {
-			show_unknown_word_list(@unknown_words) if $opt_show_unknown_word_list;
+		if (    $statistics_for->{incorrect_word_count}
+			 && $opt_show_unknown_word_list) {
+			show_unknown_word_list_statistics(
+					'UNKNOWN WORDS',
+					'misspelled_word',
+					@unknown_words 
+				);
 		}
 
 		print_header(" $LANGUAGE ");
@@ -493,6 +502,16 @@ sub show_statistics {
 		}
 	}
 	else {
+		my @unknown_words = (keys %{$statistics_for->{ignored_word}});
+
+		if ( $statistics_for->{ignored_word_count} ) {
+			show_unknown_word_list_statistics(
+					'IGNORED WORDS',
+					'ignored_word',
+					@unknown_words 
+				);
+		}
+
 		print_header(' SUMMARY ');
 		my $c = 0;
 		foreach my $key (sort keys %{$statistics_for->{replacements}}) {
@@ -1074,6 +1093,10 @@ sub action_handler_replace_with_suggested {
 sub action_handler_ignore_once {
 	my ($speller, $misspelled, $po) = @_;
 	notify_action("[$misspelled] ignored once.");
+	if (! defined $statistics_for->{ignored_word}->{$misspelled}) {
+		$statistics_for->{ignored_word_count} += 1;
+	}
+	$statistics_for->{ignored_word}->{$misspelled} += 1;
 
 	return 1;
 }
@@ -1208,6 +1231,9 @@ sub check_spelling {
 	my $incorrect_word_count = 0;
 
 	foreach my $w (@words) {
+		if (defined $statistics_for->{ignored_word}->{$w}) {
+			$statistics_for->{ignored_word}->{$w} += 1;
+		}
 		if (is_known_abbreviation($w)) {
 			debug("Found in abbreviation: $w\n", 2);
 			next;
