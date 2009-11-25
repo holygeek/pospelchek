@@ -1146,7 +1146,7 @@ sub action_handler_ignore_once {
 
 sub show_msgid_and_msgstr {
 	my ($po, $word) = @_;
-	print colored ['black on_green'], "msgid";
+	print colored ['black on_green'], " msgid";
 	print ' ';
 	print $po->msgid();
 	print "\n";
