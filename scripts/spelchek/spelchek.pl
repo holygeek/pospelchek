@@ -1156,8 +1156,10 @@ sub handle_unknown_word {
 	}
 
 	# print colored [$MISSPELLED_COLOR], "$misspelled [$original_word]";
-	print colored [$MISSPELLED_COLOR], "$misspelled";
-	print "\n";
+
+	# print colored [$MISSPELLED_COLOR], "$misspelled";
+	# print "\n";
+
 	# if ($misspelled ne $original_word) {
 	#  	debug "ORIGINAL WORD: '$original_word'\n";
 	# }
