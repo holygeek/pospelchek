@@ -670,6 +670,9 @@ sub get_action {
 
 	my $action = '';
 	while ($action !~ /^($acceptable_actions)$/) {
+		if (length $action) {
+			print colored ['white on_red'],"Unknown action '$action'\n";
+		}
 		my $c = 0;
 		for my $i (0 .. scalar @action_list / 2 - 1) {
 			my $key = $action_list[$i * 2];
