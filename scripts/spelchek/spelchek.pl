@@ -929,6 +929,14 @@ sub replace_en_US_db_content {
 		);
 }
 
+sub replace_misspelling {
+	my ($misspelled, $replacement, $text) = @_;
+
+	$text =~ s/(\\[nt]|[^[:alpha:]]*)$misspelled([^[:alpha:]]*)/$1$replacement$2/;
+
+	return $text;
+}
+
 sub replace_first_occurrence {
 	my ($fullpath, $line_no, $misspelled, $suggested_word) = @_;
 	# debug "Replace first $misspelled with $suggested_word in $fullpath starting at $line_no\n";
@@ -940,8 +948,8 @@ sub replace_first_occurrence {
 	my $progress_report = '';
 	for my $c ($line_no - 1 .. scalar @lines - 1) {
 		my $orig_line = $lines[$c];
-		if ($lines[$c] =~ /[^[:alpha:]]$misspelled[^[:alpha:]]/) {
-			$lines[$c] =~ s/([^[:alpha:]]*)$misspelled([^[:alpha:]]*)/$1$suggested_word$2/;
+		if ($lines[$c] =~ /(\\[nt]|[^[:alpha:]])$misspelled[^[:alpha:]]/) {
+			$lines[$c] = replace_misspelling($misspelled, $suggested_word, $lines[$c]);
 			if ($lines[$c] ne $orig_line) {
 				$replacement_done_at = $c + 1;
 				$progress_report
