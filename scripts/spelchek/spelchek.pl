@@ -1043,9 +1043,6 @@ sub replace_in_en_US_sources {
 			}
 		} elsif ($source->{type} eq 'FILE') {
 			if (my $line_no = replace_text_content($source->{meta}, $original_word, $suggested_word)) {
-				$statistics_for
-					->{replacements}
-				->{"$original_word -> $suggested_word"} += 1;
 				report_on_text_replacement($source->{meta}, $original_word, $suggested_word, $line_no);
 			}
 			else {
@@ -1110,6 +1107,12 @@ sub action_handler_replace_with_suggested {
 			$msgstr = replace_misspelling($original_word, $suggested_word, $msgstr);
 			$po->msgstr($msgstr);
 		}
+	}
+	
+	if ($success) {
+		$statistics_for
+			->{replacements}
+			->{"$original_word -> $suggested_word"} += 1;
 	}
 
 	return $success;
