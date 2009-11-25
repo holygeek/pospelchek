@@ -55,6 +55,8 @@ my @external_commands;
 my @action_list;
 my $spellcheckrc = $Spelchek::spellcheckrc;
 my $GIVEN_TEXT = '';
+# Limit suggestions to 10, like aspell
+my $MAX_SUGGEST = 10;
 
 load_spellcheckrc();
 
@@ -605,7 +607,7 @@ sub read_text {
 				print "\b \b";
 			}
 			if (length $text == 0) {
-				return read_one_char_or_a_number();
+				return read_one_char_or_line();
 			}
 		}
 		$c = prompt(-'prompt' => '',
@@ -625,12 +627,13 @@ sub read_one_char {
 	return $c;
 }
 
-sub read_one_char_or_a_number {
+sub read_one_char_or_line {
 	
 	my $c = read_one_char();
-	if ($c =~ /^\d$/) {
-		return read_text($c);
-	}
+	# We no longer show more than 10 suggestions
+	# if ($c =~ /^\d$/) {
+	# 	return read_text($c);
+	# }
 
 	if ($c eq 'r') {
 		return read_text($c);
@@ -663,7 +666,7 @@ sub get_action {
 		}
 		print "Action: ";
 
-		$action = read_one_char_or_a_number();
+		$action = read_one_char_or_line();
 
 		if (length $action == 0) {
 			$action = 'i';
@@ -717,6 +720,9 @@ sub print_suggestions {
 			$suggested_for{$c} = $candidates[$i];
 		}
 		$c = $i + 1 + $nrows;
+		if ($c == $MAX_SUGGEST) {
+			$c = 0;
+		}
 		if (defined $candidates[$i + $nrows]) {
 			$right = " $c) " . $candidates[$i + $nrows];
 			$suggested_for{$c} = $candidates[$i + $nrows];
@@ -1160,7 +1166,11 @@ sub handle_unknown_word {
 		}
 	}
 
-	my $suggested_for = print_suggestions($speller->suggest($misspelled));
+	my @suggestions = $speller->suggest($misspelled);
+	if (scalar @suggestions > $MAX_SUGGEST) {
+		@suggestions = @suggestions[0 .. ($MAX_SUGGEST - 1)];
+	}	
+	my $suggested_for = print_suggestions(@suggestions);
 
 	print_header('ACTIONS');
 	my $action = get_action();
