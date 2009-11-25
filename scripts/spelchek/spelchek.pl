@@ -740,7 +740,7 @@ sub print_suggestions {
 
 sub highlight {
 	my ($color, $misspelled, $text) = @_;
-	$text =~ s/([^[:alpha:]])\Q$misspelled\E([^[:alpha:]])/"$1".color($color).$misspelled.color('reset')."$2"/sge;
+	$text =~ s/(\\[nt]|[^[:alpha:]])\Q$misspelled\E([^[:alpha:]])/"$1".color($color).$misspelled.color('reset')."$2"/sge;
 	return $text;
 }
 
