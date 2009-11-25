@@ -1509,7 +1509,8 @@ Your choice: ";
 
 sub bootstrap_or_exit {
 	my %need = (
-			ack => 'sudo apt-get install ack-grep',
+			# We no longer need ack, bye bye ack
+			# ack => 'sudo apt-get install ack-grep',
 	);
 
 	my $all_good = 1;
