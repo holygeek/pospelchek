@@ -658,7 +658,7 @@ sub read_one_char_or_line {
 		return read_text($c);
 	}
 
-	print "\n";
+	print "$c\n";
 	return $c;
 }
 
