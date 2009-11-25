@@ -38,6 +38,8 @@ my $digits_removed;
 my $dashes_and_quotes_removed;
 my %conf;
 
+my $TERMINAL_WIDTH = 80;
+my $HALF_WIDTH = 36;
 my $LANGUAGE = $ARGV[0];
 my $LOCAL_DICT_FILE = "./dict/$LANGUAGE.txt";
 my $ABBREVIATION_FILE = "./dict/$LANGUAGE.abbr.txt";
@@ -667,6 +669,7 @@ sub read_one_char_or_line {
 
 sub get_action {
 	my %action_for =  @action_list;
+	my $sug_width = $HALF_WIDTH - length('  ) ');
 
 	my $acceptable_actions = join ('|', keys %action_for);
 
@@ -679,7 +682,7 @@ sub get_action {
 		for my $i (0 .. scalar @action_list / 2 - 1) {
 			my $key = $action_list[$i * 2];
 			my $text = $action_list[$i * 2 + 1]->{text};
-			printf "%2s) %-40s", $key, $text;
+			printf "%2s) %-${sug_width}s", $key, $text;
 			$c += 1;
 			if ($c % 2 == 0) {
 				print "\n";
@@ -713,8 +716,9 @@ sub get_action {
 
 sub print_header {
 	my $text = shift;
-	my $len = length($text);
-	print '--',$text,'-' x (80 - $len),"\n";
+	my $pre = "--$text";
+	my $len = length($pre);
+	print $pre,'-' x ($TERMINAL_WIDTH - $len),"\n";
 }
 
 sub print_suggestions {
@@ -751,7 +755,7 @@ sub print_suggestions {
 			$right = " $c) " . $candidates[$i + $nrows];
 			$suggested_for{$c} = $candidates[$i + $nrows];
 		}
-		printf "%-49s%-49s\n", $left, $right;
+		printf "%-${HALF_WIDTH}s%-${HALF_WIDTH}s\n", $left, $right;
 	}
 	return \%suggested_for;
 }
@@ -1599,6 +1603,11 @@ sub bootstrap_or_exit {
 		print_usage();
 		exit 0;
 	}	
+
+	my ($wchar, $hchar, $wpixels, $hpixels) = GetTerminalSize();
+	if (defined $wchar) {
+		$TERMINAL_WIDTH = $wchar;
+	}
 
 	if ($LANGUAGE eq 'en_US' && ! $opt_summary_only) {
 		confirm_en_US_po_file_is_uptodate_or_exit();
