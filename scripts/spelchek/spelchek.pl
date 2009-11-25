@@ -16,6 +16,7 @@ use Locale::PO 0.21;
 use Regexp::Common;
 use Term::ANSIColor;
 use Text::Aspell;
+use Term::ReadKey;
 
 use lib "$Bin";
 use Spelchek;
@@ -46,6 +47,7 @@ my $MISSPELLED_COLOR = 'white on_red';
 my $DB_COLOR = 'blue on_white';
 my $CORRECTED_COLOR  = 'black on_green';
 my %internal_dict_has;
+my %replace_all;
 my $statistics_for = {
 	total_word_count => 0,
 	incorrect_word_count => 0,
@@ -1106,6 +1108,24 @@ sub action_handler_replace_with_suggested {
 	return $success;
 }
 
+sub action_handler_replace_all {
+	my ($speller, $misspelled, $po) = @_;
+
+	print "Enter empty text to cancel.\n";
+	print "Replace all '$misspelled' with: ";
+	my $text = <STDIN>;
+	chomp $text;
+	$text =~ s/^\s+//;
+	$text =~ s/\s+$//;
+
+	return 0 if (length $text == 0);
+
+	$replace_all{$misspelled} = $text;
+	$speller->add_to_session($text);
+
+	return action_handler_replace_with_suggested($misspelled, $text, $po);
+}
+
 sub action_handler_ignore_once {
 	my ($speller, $misspelled, $po) = @_;
 	notify_action("[$misspelled] ignored once.");
@@ -1262,6 +1282,11 @@ sub check_spelling {
 		}
 		next if (! length $w);
 		debug ("Checking [$w]\n", 3);
+
+		if (defined $replace_all{$w}) {
+			action_handler_replace_with_suggested($w, $replace_all{$w}, $po);
+			return;
+		}
 
 		if (! $speller->check($w)) {
 			$incorrect_word_count += 1;
@@ -1479,10 +1504,12 @@ sub load_action_list {
 					handler => \&action_handler_add_to_abbreviation_dict },
 			r => { text => 'Replace <with this text>',
 					handler => \&action_handler_replace_with_given_text },
-			q => { text => 'Exit',
-					handler => \&action_handler_exit },
+			R => { text => 'Replace all',
+					handler => \&action_handler_replace_all },
 			e => { text => 'Edit',
 					handler => \&action_handler_edit_source },
+			q => { text => 'Exit',
+					handler => \&action_handler_exit },
 		);
 
 	if (defined $conf{personal_dictionary}) {
