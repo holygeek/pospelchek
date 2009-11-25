@@ -1088,6 +1088,7 @@ sub action_handler_replace_with_given_text {
 	}
 
 	my $suggested_word = $GIVEN_TEXT;
+	$speller->add_to_session($suggested_word);
 
 	my $success = action_handler_replace_with_suggested($misspelled, $suggested_word, $po);
 
@@ -1240,6 +1241,7 @@ sub handle_unknown_word {
 
 	if (defined $suggested_for->{$action}) {
 		my $suggested_word = $suggested_for->{$action};
+		$speller->add_to_session($suggested_word);
 		$success = action_handler_replace_with_suggested($original_word, $suggested_word, $po);
 	}
 	elsif (ref $action->{handler} eq 'CODE') {
