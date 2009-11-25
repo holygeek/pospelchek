@@ -41,10 +41,11 @@ my %conf;
 my $TERMINAL_WIDTH = 80;
 my $HALF_WIDTH = 36;
 my $LANGUAGE = $ARGV[0];
-my $LOCAL_DICT_FILE = "./dict/$LANGUAGE.txt";
-my $ABBREVIATION_FILE = "./dict/$LANGUAGE.abbr.txt";
+my $LOCAL_DICT_FILE = "dict/$LANGUAGE.txt";
+my $ABBREVIATION_FILE = "dict/$LANGUAGE.abbr.txt";
 my $PERSONAL_DICT_FILE = undef;
-my $COMMON_DICT_FILE = './dict/common.txt';
+my $PERSONAL_DICT_FILE_MANGLED = undef;
+my $COMMON_DICT_FILE = 'dict/common.txt';
 my $MISSPELLED_COLOR = 'white on_red';
 my $DB_COLOR = 'blue on_white';
 my $CORRECTED_COLOR  = 'black on_green';
@@ -239,7 +240,8 @@ sub load_spellcheckrc {
 	}
 	if (defined $conf{personal_dictionary}) {
 		$PERSONAL_DICT_FILE = $conf{personal_dictionary};
-		$PERSONAL_DICT_FILE =~ s/^~/$ENV{HOME}/;
+		$PERSONAL_DICT_FILE_MANGLED = $PERSONAL_DICT_FILE;
+		$PERSONAL_DICT_FILE_MANGLED =~ s/^~/$ENV{HOME}/;
 	}
 }
 
@@ -423,7 +425,7 @@ sub action_handler_add_to_personal_dict {
 	my ($speller, $misspelled) = @_;
 	$need_sort_personal_dict = 1;
 
-	my $dict_file = $PERSONAL_DICT_FILE;
+	my $dict_file = $PERSONAL_DICT_FILE_MANGLED;
 
 	my $header = "# personal dictionary, case sensitive";
 
@@ -554,7 +556,7 @@ sub action_handler_exit {
 		sort_and_remove_duplicate($ABBREVIATION_FILE, $case_sensitive);
 	}
 	if ($need_sort_personal_dict) {
-		sort_and_remove_duplicate($PERSONAL_DICT_FILE, $case_sensitive);
+		sort_and_remove_duplicate($PERSONAL_DICT_FILE_MANGLED, $case_sensitive);
 	}
 	show_statistics();
 	exit 0;
@@ -1446,7 +1448,7 @@ sub spelchek {
 				);
 	if (defined $PERSONAL_DICT_FILE) {
 		load_local_dict($speller,
-							$PERSONAL_DICT_FILE,
+							$PERSONAL_DICT_FILE_MANGLED,
 							1, # case sensitive
 							0, # don't add to suggestion
 					);
