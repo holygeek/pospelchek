@@ -38,11 +38,13 @@ my $digits_removed;
 my $dashes_and_quotes_removed;
 my %conf;
 
+my $LONGEST_COMMAND_LENGTH = 0;
 my $TERMINAL_WIDTH = 80;
 my $HALF_WIDTH = 36;
 my $LANGUAGE = $ARGV[0];
 my $LOCAL_DICT_FILE = "dict/$LANGUAGE.txt";
 my $ABBREVIATION_FILE = "dict/$LANGUAGE.abbr.txt";
+my $IGNORED_PHRASES_FILE = "dict/$LANGUAGE.ignore.phrases.txt";
 my $PERSONAL_DICT_FILE = undef;
 my $PERSONAL_DICT_FILE_MANGLED = undef;
 my $COMMON_DICT_FILE = 'dict/common.txt';
@@ -51,6 +53,7 @@ my $DB_COLOR = 'blue on_white';
 my $CORRECTED_COLOR  = 'black on_green';
 my %internal_dict_has;
 my %replace_all;
+my %ignored_phrase_count_for;
 my $statistics_for = {
 	total_word_count => 0,
 	incorrect_word_count => 0,
@@ -482,6 +485,20 @@ sub show_unknown_word_list_statistics {
 sub show_statistics {
 	print_header(' PO FILE ');
 	print "  $LANGUAGE.po\n";
+
+	my $ignored_but_unmet = '';
+	foreach my $ignored_phrase (keys %ignored_phrase_count_for) {
+		my $frequency = $ignored_phrase_count_for{$ignored_phrase};
+		if ($frequency == 0) {
+			$ignored_but_unmet .= "  $ignored_phrase\n";
+		}
+	}
+
+	if (length $ignored_but_unmet) {
+		print_header(" UNMATCHED IGNORED PHRASES ($IGNORED_PHRASES_FILE) ");
+		print $ignored_but_unmet;
+	}
+
 	if ($opt_summary_only) {
 		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
 		if (    $statistics_for->{incorrect_word_count}
@@ -660,7 +677,7 @@ sub read_one_char_or_line {
 	# 	return read_text($c);
 	# }
 
-	if ($c eq 'r') {
+	if ($c =~ /^(r|P)$/) {
 		return read_text($c);
 	}
 
@@ -671,7 +688,6 @@ sub read_one_char_or_line {
 
 sub get_action {
 	my %action_for =  @action_list;
-	my $sug_width = $HALF_WIDTH - length('  ) ');
 
 	my $acceptable_actions = join ('|', keys %action_for);
 
@@ -684,7 +700,7 @@ sub get_action {
 		for my $i (0 .. scalar @action_list / 2 - 1) {
 			my $key = $action_list[$i * 2];
 			my $text = $action_list[$i * 2 + 1]->{text};
-			printf "%2s) %-${sug_width}s", $key, $text;
+			printf "%2s) %-${LONGEST_COMMAND_LENGTH}s", $key, $text;
 			$c += 1;
 			if ($c % 2 == 0) {
 				print "\n";
@@ -705,6 +721,12 @@ sub get_action {
 			return $action;
 		}
 		if ($action =~ /^r/) {
+			my ($a, $text) = split(/\s/, $action, 2);
+			$text =~ s/^\s+//;
+			$text =~ s/\s+$//;
+			$GIVEN_TEXT = $text;
+			$action = $a;
+		} elsif ($action =~ /^P/) {
 			my ($a, $text) = split(/\s/, $action, 2);
 			$text =~ s/^\s+//;
 			$text =~ s/\s+$//;
@@ -1075,6 +1097,26 @@ sub replace_in_po_file {
 	return $success;
 }
 
+sub action_handler_ignore_phrase {
+	my ($speller, $misspelled, $po) = @_;
+
+	if (length $GIVEN_TEXT == 0) {
+		print colored ['white on_red'], "Usage: P <phrase>\n";
+
+		return 0;
+	}
+	open my $IGNORED_PHRASES, '>>', $IGNORED_PHRASES_FILE
+		or die "Could no open $IGNORED_PHRASES_FILE: $OS_ERROR";
+	print $IGNORED_PHRASES $GIVEN_TEXT . "\n";
+	close $IGNORED_PHRASES;
+	if (! defined $ignored_phrase_count_for{$GIVEN_TEXT}) {
+		# Set it to 1 so that it won't show up as unmatched.
+		# Trust the user that the phrase happens at least once.
+		$ignored_phrase_count_for{$GIVEN_TEXT} = 1;
+	}
+	notify_action("Added '$GIVEN_TEXT' to $IGNORED_PHRASES_FILE");
+}
+
 sub action_handler_replace_with_given_text {
 	my ($speller, $misspelled, $po) = @_;
 
@@ -1343,6 +1385,20 @@ sub load_local_dict {
 	}
 }
 
+sub load_ignored_phrases {
+	if ( ! -f $IGNORED_PHRASES_FILE ) {
+		return;
+	}
+
+	open my $IGNORED_PHRASES, '<', $IGNORED_PHRASES_FILE
+		or die "Could not open $IGNORED_PHRASES_FILE: $OS_ERROR";
+	while (my $line = <$IGNORED_PHRASES>) {
+		chomp $line;
+		$ignored_phrase_count_for{$line} = 0;
+	}
+	close $IGNORED_PHRASES;
+}
+
 sub remove_beginning_and_ending {
 	my ($to_remove, $text, $literal) = @_;
 	$literal ||= 1;
@@ -1435,6 +1491,17 @@ sub remove_insignificant_characters {
 	return $msgstr;
 }
 
+sub remove_ignored_phrases {
+	my ($msgstr) = @_;
+
+	foreach my $phrase (keys %ignored_phrase_count_for) {
+		my $nsubs = $msgstr =~ s/\b$phrase\b/' ' x length($phrase)/gmse;
+		$ignored_phrase_count_for{$phrase} += $nsubs;
+	}
+
+	return $msgstr;
+}
+
 sub spelchek {
 	my ($lang, $messages_aref) = @_; 
 
@@ -1451,6 +1518,9 @@ sub spelchek {
 						0, # case insensitive
 						0, # don't add to suggestion
 				);
+
+	load_ignored_phrases();
+
 	if (defined $PERSONAL_DICT_FILE) {
 		load_local_dict($speller,
 							$PERSONAL_DICT_FILE_MANGLED,
@@ -1471,6 +1541,8 @@ sub spelchek {
 
 		my $msgstr = $po->msgstr();
 		$pristine_msgstr = $msgstr;
+
+		$msgstr = remove_ignored_phrases($msgstr);
 
 		$msgstr = remove_insignificant_characters($msgstr);
 
@@ -1519,6 +1591,8 @@ sub load_action_list {
 					handler => \&action_handler_replace_all },
 			e => { text => 'Edit',
 					handler => \&action_handler_edit_source },
+			P => { text => "Add <phrase> to $IGNORED_PHRASES_FILE",
+					handler => \&action_handler_ignore_phrase },
 			q => { text => 'Exit',
 					handler => \&action_handler_exit },
 		);
@@ -1548,6 +1622,15 @@ sub load_action_list {
 						external => 1,
 					},
 			);
+	}
+
+	%action_for = @action_list;
+
+	foreach my $key (keys %action_for) {
+		my $len = length ($action_for{$key}->{text});
+		if ($LONGEST_COMMAND_LENGTH < $len) {
+			$LONGEST_COMMAND_LENGTH = $len;
+		}
 	}
 }
 
