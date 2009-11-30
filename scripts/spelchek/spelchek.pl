@@ -45,6 +45,7 @@ my $LANGUAGE = $ARGV[0];
 my $LOCAL_DICT_FILE = "dict/$LANGUAGE.txt";
 my $ABBREVIATION_FILE = "dict/$LANGUAGE.abbr.txt";
 my $IGNORED_PHRASES_FILE = "dict/$LANGUAGE.ignore.phrases.txt";
+my @IGNORED_PHRASES;
 my $PERSONAL_DICT_FILE = undef;
 my $PERSONAL_DICT_FILE_MANGLED = undef;
 my $COMMON_DICT_FILE = 'dict/common.txt';
@@ -1097,6 +1098,16 @@ sub replace_in_po_file {
 	return $success;
 }
 
+sub sort_ignored_phrases {
+	# This need to be sorted from longest to shortest so that the sorter
+	# phrases do no get in the way of the longer one when we check for their
+	# occurrence later.
+	@IGNORED_PHRASES
+		= reverse sort 
+			{ length $a <=> length $b }
+			(keys %ignored_phrase_count_for);
+}
+
 sub action_handler_ignore_phrase {
 	my ($speller, $misspelled, $po) = @_;
 
@@ -1113,6 +1124,7 @@ sub action_handler_ignore_phrase {
 		# Set it to 1 so that it won't show up as unmatched.
 		# Trust the user that the phrase happens at least once.
 		$ignored_phrase_count_for{$GIVEN_TEXT} = 1;
+		sort_ignored_phrases();
 	}
 	notify_action("Added '$GIVEN_TEXT' to $IGNORED_PHRASES_FILE");
 }
@@ -1397,6 +1409,7 @@ sub load_ignored_phrases {
 		$ignored_phrase_count_for{$line} = 0;
 	}
 	close $IGNORED_PHRASES;
+	sort_ignored_phrases();
 }
 
 sub remove_beginning_and_ending {
@@ -1494,8 +1507,8 @@ sub remove_insignificant_characters {
 sub remove_ignored_phrases {
 	my ($msgstr) = @_;
 
-	foreach my $phrase (keys %ignored_phrase_count_for) {
-		my $nsubs = $msgstr =~ s/\b$phrase\b/' ' x length($phrase)/gmse;
+	foreach my $phrase (@IGNORED_PHRASES) {
+		my $nsubs = $msgstr =~ s/\b($phrase)\b/' ' x length($1)/gmse;
 		$ignored_phrase_count_for{$phrase} += $nsubs;
 	}
 
