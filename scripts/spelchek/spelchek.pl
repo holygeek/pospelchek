@@ -1648,10 +1648,12 @@ sub load_action_list {
 }
 
 sub confirm_en_US_po_file_is_uptodate_or_exit {
-	print "
-For en_US, the correct operation of spelchek.pl is critically dependent on
-the up-to-date status of $LANGUAGE.po. If the $LANGUAGE.po is not up-to-date,
-the spelling corrections is not guaranteed to be done correctly.";
+	print_header(' REMINDER ');
+	print "For en_US, the correct operation of spelchek.pl is critically
+dependent on the up-to-date status of $LANGUAGE.po. If the $LANGUAGE.po is not
+up-to-date, the spelling corrections is not guaranteed to work correctly.\n";
+
+	return ; # And skip the following:
 
 	my $answer = '';
 	my $acceptable_answer = 'cgq';
