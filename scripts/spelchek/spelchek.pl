@@ -502,7 +502,7 @@ sub show_statistics {
 	if ($opt_summary_only) {
 		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
 		if (    $statistics_for->{incorrect_word_count}
-			 && $opt_show_unknown_word_list) {
+			 && $opt_show_unknown_word_list ) {
 			show_unknown_word_list_statistics(
 					'UNKNOWN WORDS',
 					'misspelled_word',
