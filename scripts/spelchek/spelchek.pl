@@ -529,13 +529,13 @@ sub show_statistics {
 		print "\n";
 	}
 	else {
-		my @unknown_words = (keys %{$statistics_for->{ignored_word}});
+		my @ignored_words = (keys %{$statistics_for->{ignored_word}});
 
 		if ( $statistics_for->{ignored_word_count} ) {
 			show_unknown_word_list_statistics(
 					'IGNORED WORDS',
 					'ignored_word',
-					@unknown_words 
+					@ignored_words 
 				);
 		}
 
