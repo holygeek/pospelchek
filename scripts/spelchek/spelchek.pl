@@ -1744,6 +1744,13 @@ sub thing_doer {
 			print "For en_US please generate the en_US.po file by running 'make gettext LANGUAGE=en_US'\n";
 			exit 1;
 		}
+		elsif ($language eq 'en_GB') {
+			print "At the moment en_GB is not maintained by hand, and it is\n"
+				. "generated automatically from en_US.po. Any spelling mistake\n"
+				. "in en_US.po will be carried over to en_GB.mo.\n"
+				;
+			exit 0;
+		}
 		else {
 			print "$language.po does not exists. Spell check aborted.\n";
 			exit 1;
