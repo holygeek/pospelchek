@@ -22,12 +22,13 @@ use lib "$Bin";
 use Spelchek;
 
 my %opts;
-my $valid_option = getopts('sud:', \%opts);
+my $valid_option = getopts('sued:', \%opts);
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
 # -d n  'debug level is n'
 my $opt_summary_only = 0;
 my $opt_debug_level = 0;
+my $opt_exit_value = 0;
 my $opt_show_unknown_word_list = 1;
 
 my $pristine_msgstr;
@@ -78,6 +79,9 @@ if (defined $opts{d}) {
 }
 if (defined $opts{u}) {
 	$opt_show_unknown_word_list = 0;
+}
+if (defined $opts{e}) {
+	$opt_exit_value = 1;
 }
 
 my $me = basename(__FILE__);
@@ -580,7 +584,14 @@ sub action_handler_exit {
 		sort_and_remove_duplicate($PERSONAL_DICT_FILE_MANGLED, $case_sensitive);
 	}
 	show_statistics();
-	exit 0;
+	if ($opt_exit_value) {
+		my @unknown_words = (keys %{$statistics_for->{misspelled_word}});
+		exit scalar @unknown_words;
+	}
+	else {
+		# Always return 0 so that make does not complain
+		exit 0;
+	}
 }
 
 sub sort_and_remove_duplicate {
