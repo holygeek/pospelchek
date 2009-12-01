@@ -512,18 +512,21 @@ sub show_statistics {
 		}
 
 		print_header(" $LANGUAGE ");
-		printf "  %7d words,\n", $statistics_for->{total_word_count};
+		printf "  %7d words", $statistics_for->{total_word_count};
 		my $unknown_word_count = scalar @unknown_words;
 		if ($unknown_word_count > 0) {
-			printf "  %7d unknown, %d occurrence",
+			printf ",\n  %7d unknown, %d occurrence",
 				   scalar @unknown_words,
 				   $statistics_for->{incorrect_word_count},
 				   ;
 			if ($statistics_for->{incorrect_word_count} > 1) {
 				print 's';
 			}
-			print "\n";
 		}
+		else {
+			print '.';
+		}
+		print "\n";
 	}
 	else {
 		my @unknown_words = (keys %{$statistics_for->{ignored_word}});
