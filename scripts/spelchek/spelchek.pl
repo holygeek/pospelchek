@@ -107,35 +107,35 @@ $me can be customized via ~/.spellcheckrc.
 Valid configuration entries in ~/.spellcheckrc are:
 
   1. text_editor = command arguments ...
-  
+
      The following patterns in 'text_editor' will be mangled:
-  
+
           PATTERN         REPLACEMENT
         %{filename}     The filename
         %{line}         The line number containing the word
         %{wrongword}    The misspelled word
-  
+
      The default text_editor value is
-  
-  	  $default_text_e
-  
+
+       $default_text_e
+
      This opens the file in vi, goes to the line number and moves the cursor
      to the first match of the misspelled word.
 
-	 text_editor will be used when editing po files. For editing references
-	 to msgids (e.g., #: path/to/file.html:22), see po_reference_editor below.
-  
+     text_editor will be used when editing po files. For editing references
+     to msgids (e.g., #: path/to/file.html:22), see po_reference_editor below.
+
   2. <external_command>
           shortcut = <a single letter>
           description = Descriptive text
           command = command arguments ...
           continue = <0 or 1>
      </external_command>
-  
+
      More than one <external_command> entries are accepted.
      The 'command' entries in each <external_command> entries will be mangled
      using the following patterns:
-  
+
           PATTERN            REPLACEMENT
         %{references}      The reference for the msgid in the po file.
                            If there are more than one references, they will be
@@ -144,22 +144,22 @@ Valid configuration entries in ~/.spellcheckrc are:
 
         %{wrongword}       The misspelled word
 
-		%{po_line}  The line number of the corresponding msgstr where the 
+        %{po_line}         The line number of the corresponding msgstr where the
                            misspelled word is found.
-  
+
      The 'continue' entry tells spellcheck whether to continue checking the next
      misspelled word, or recheck the current misspelled word. An example of
      external_command entry for googling the misspelled word is given below:
-  
+
      <external_command>
          shortcut = g
          description = Google it
          command = lynx \"http://www.google.com/search?q=%{wrongword}\"
-  	   continue = 0
+         continue = 0
      </external_command>
-  
+
   3. personal_dictionary = /path/to/your/personal/dictionary.txt
-  
+
      If defined, spellcheck.pl will also use the specified personal_dictionary.
 
   4. po_reference_editor = command arguments ...
@@ -181,7 +181,7 @@ To begin spellchecking:
 
     \$ make spellcheck LANGUAGE=en_US
 
-	or
+    or
 
     \$ make spellcheck LANGUAGE=ms_MY
 
@@ -191,9 +191,9 @@ Quick guide on choosing which dictionary to save unknown word to:
   1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation. spellcheck.pl
      will honor the case sensitivity of the abbreviation: If you add 'BMI' into
      it, 'BMI' will be considered as a correct word while 'bmi' is not.
-   
+
   2. Add to ./dict/\$LANG.abbr.txt if it is a valid word for the language.
-   
+
   3. Add to ./dict/common.txt if it is a valid word for all languages. Examples of
      words that are valid for all languages are \$FULLNAME\$, VAR_NAME, etc.
 
@@ -343,10 +343,10 @@ sub get_po_line {
 						debug "MSGID  \n[$msgid]\n";
 						debug "line_no is [$line_no]\n";
 						if (defined $for_msgstr) {
-							debug("returning for msgstr: $msgstr_line_no\n");  
+							debug("returning for msgstr: $msgstr_line_no\n");
 							return $msgstr_line_no;
 						} else {
-							debug("returning for msgsid: $msgid_line_no\n");  
+							debug("returning for msgsid: $msgid_line_no\n");
 							return $msgid_line_no;
 						}
 					}
@@ -355,7 +355,7 @@ sub get_po_line {
 			}
 		}
 	}
-	
+
 	die "Couldn't get line no for msgid '$msgid_needle' in $po_file";
 }
 
@@ -507,7 +507,7 @@ sub show_statistics {
 			show_unknown_word_list_statistics(
 					'UNKNOWN WORDS',
 					'misspelled_word',
-					@unknown_words 
+					@unknown_words
 				);
 		}
 
@@ -535,7 +535,7 @@ sub show_statistics {
 			show_unknown_word_list_statistics(
 					'IGNORED WORDS',
 					'ignored_word',
-					@ignored_words 
+					@ignored_words
 				);
 		}
 
@@ -558,7 +558,7 @@ sub show_statistics {
 				print "  $LANGUAGE has 0 translation.\n";
 			}
 		} else {
-			print "  Total $c replacements.\n"; 
+			print "  Total $c replacements.\n";
 			print "  (Excludes edits)\n";
 		}
 	}
@@ -674,7 +674,6 @@ sub read_one_char {
 }
 
 sub read_one_char_or_line {
-	
 	my $c = read_one_char();
 	# We no longer show more than 10 suggestions
 	# if ($c =~ /^\d$/) {
@@ -807,7 +806,7 @@ sub insert_line_number {
 
 sub show_context_lines {
 	my ($misspelled, $file_meta, $ncontext) = @_;
-	my $filename   = $file_meta->{filename}; 
+	my $filename   = $file_meta->{filename};
 	my $line_no = $file_meta->{line_no};
 
 	my $fullpath = $filename;
@@ -820,7 +819,7 @@ sub show_context_lines {
 		print STDERR "\n";
 		return;
 	}
-	
+
 	my $to_show = '';
 	my $c = 0;
 	my $found_a_match = 0;
@@ -898,16 +897,15 @@ sub show_db_content {
 	my $primary_key_column = $meta->{primary_key_column};
 	my $primary_key_value = $meta->{primary_key_value};
 	my $column_name = $meta->{column_name};
-	print color($DB_COLOR) . 'DB entry' . color('reset') . ': ' 
+	print color($DB_COLOR) . 'DB entry' . color('reset') . ': '
 		. "TABLE '$table' PRIMARY KEY '$primary_key_column' = '$primary_key_value' COLUMN '$column_name'\n";
 	print color($DB_COLOR) . 'Fulltext' . color('reset') . ': ';
 	print highlight($MISSPELLED_COLOR, $misspelled, $pristine_msgstr . "\n");
-	
 }
 
 sub show_sources {
 	my ($misspelled, $po) = @_;
-	
+
 	# print "Showing sources fo \'$misspelled\'\n";
 	foreach my $source (Spelchek::get_source_meta($po->reference())) {
 		if ($source->{type} eq 'DB') {
@@ -1106,7 +1104,7 @@ sub sort_ignored_phrases {
 	# phrases do no get in the way of the longer one when we check for their
 	# occurrence later.
 	@IGNORED_PHRASES
-		= reverse sort 
+		= reverse sort
 			{ length $a <=> length $b }
 			(keys %ignored_phrase_count_for);
 }
@@ -1165,7 +1163,7 @@ sub action_handler_replace_with_suggested {
 			$po->msgstr($msgstr);
 		}
 	}
-	
+
 	if ($success) {
 		$statistics_for
 			->{replacements}
@@ -1291,7 +1289,7 @@ sub handle_unknown_word {
 	my @suggestions = $speller->suggest($misspelled);
 	if (scalar @suggestions > $MAX_SUGGEST) {
 		@suggestions = @suggestions[0 .. ($MAX_SUGGEST - 1)];
-	}	
+	}
 	my $suggested_for = print_suggestions(@suggestions);
 
 	print_header('ACTIONS');
@@ -1366,7 +1364,7 @@ sub check_spelling {
 						  "The 'continue' action is hardcoded to stop at 10 iteractions\n.";
 					print "\n";
 					# don't repeat forever, just in case.
-					last; 
+					last;
 				}
 				$c += 1;
 			}
@@ -1469,7 +1467,7 @@ sub remove_beginning_and_ending_dashes_and_quotes {
 
 my $html_stripper = HTML::Strip->new(); # yummy!
 $html_stripper->set_decode_entities(0);
-	
+
 sub remove_insignificant_characters {
 	my ($msgstr) = @_;
 
@@ -1492,7 +1490,7 @@ sub remove_insignificant_characters {
 
 	# ($msgstr, $punctuations_removed) = remove_punctuations_but_not_dash_and_quote($msgstr);
 	if ($LANGUAGE eq 'en_US') {
-		# This is so that we can catch mistakes like 
+		# This is so that we can catch mistakes like
 		# 'State-of-art', which should be 'State-of-the-art'
 		($msgstr, $punctuations_removed) = remove_punctuations_but_not($msgstr, "-'");
 	}
@@ -1519,7 +1517,7 @@ sub remove_ignored_phrases {
 }
 
 sub spelchek {
-	my ($lang, $messages_aref) = @_; 
+	my ($lang, $messages_aref) = @_;
 
 	my $speller = Text::Aspell->new or die "Could not create speller\n";
 
@@ -1616,7 +1614,7 @@ sub load_action_list {
 	if (defined $conf{personal_dictionary}) {
 		push @action_list, (
 			p => { text => "Add to $PERSONAL_DICT_FILE",
-					handler => \&action_handler_add_to_personal_dict },	
+					handler => \&action_handler_add_to_personal_dict },
 		)
 	}
 
@@ -1710,7 +1708,7 @@ sub bootstrap_or_exit {
 	if ($LANGUAGE =~ /help/) {
 		print_usage();
 		exit 0;
-	}	
+	}
 
 	my ($wchar, $hchar, $wpixels, $hpixels) = GetTerminalSize();
 	if (defined $wchar) {
@@ -1728,7 +1726,7 @@ sub cleanup {
 
 sub thing_doer {
 	my $language = shift;
-	
+
 	my $po_file = "$language.po";
 	if ( ! -e $po_file ) {
 		if ($language eq 'en_US') {
@@ -1740,7 +1738,7 @@ sub thing_doer {
 			exit 1;
 		}
 	}
-	
+
 	my $messages_aref = Locale::PO->load_file_asarray($po_file);
 
 	spelchek($language, $messages_aref);
