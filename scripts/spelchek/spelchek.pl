@@ -204,6 +204,16 @@ Quick guide on choosing which dictionary to save unknown word to:
   4. If it's none of the above, then put it into your personal_dictionary (see
      CUSTOMIZATION above).
 
+Ignored Phrases
+===============
+
+The dict directory also has files named \$LANGUAGE.ignore.phrases.txt.  You may
+add phrases into this file during the spellchecking process and the whole
+phrase will be ignored in the future. Any obsolete ignored phrases (no longer
+encountered) will be reported at the end spellcheck session so that
+\$LANGUAGE.ignore.phrases.txt can be kept up to date.
+
+
 Have fun spellchecking!
 ";
 	my $PAGER;
