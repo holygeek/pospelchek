@@ -271,7 +271,7 @@ sub add_MySQL_update_statement_to_file {
 
 	if ($insert_header) {
 		my $date = localtime;
-		print $SQL "-- spellcheck.pl corrections $date\n";
+		print $SQL "-- spelchek.pl corrections $date\n";
 	}
 
 	my $first_part =  sprintf(qq(UPDATE `%s` SET `%s`='),

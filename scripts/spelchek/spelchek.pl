@@ -164,7 +164,7 @@ Valid configuration entries in ~/.spellcheckrc are:
 
   3. personal_dictionary = /path/to/your/personal/dictionary.txt
 
-     If defined, spellcheck.pl will also use the specified personal_dictionary.
+     If defined, $me will also use the specified personal_dictionary.
 
   4. po_reference_editor = command arguments ...
 
@@ -192,7 +192,7 @@ To begin spellchecking:
 Quick guide on choosing which dictionary to save unknown word to:
 =================================================================
 
-  1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation. spellcheck.pl
+  1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation. spelcheck.pl
      will honor the case sensitivity of the abbreviation: If you add 'BMI' into
      it, 'BMI' will be considered as a correct word while 'bmi' is not.
 
@@ -1661,7 +1661,7 @@ sub load_action_list {
 
 sub confirm_en_US_po_file_is_uptodate_or_exit {
 	print_header(' REMINDER ');
-	print "For en_US, the correct operation of spelchek.pl is critically
+	print "For en_US, the correct operation of $me is critically
 dependent on the up-to-date status of $LANGUAGE.po. If the $LANGUAGE.po is not
 up-to-date, the spelling corrections is not guaranteed to work correctly.\n";
 
