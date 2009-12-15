@@ -816,7 +816,7 @@ sub print_suggestions {
 
 sub highlight {
 	my ($color, $misspelled, $text) = @_;
-	$text =~ s/(\\[nt]|[^[:alpha:]])\Q$misspelled\E([^[:alpha:]])/"$1".color($color).$misspelled.color('reset')."$2"/sge;
+	$text =~ s/((\\[nt]|[^[:alpha:]])*)\Q$misspelled\E(([^[:alpha:]])*)/"$1".color($color).$misspelled.color('reset')."$3"/sge;
 	return $text;
 }
 
@@ -855,7 +855,7 @@ sub show_context_lines {
 	while (my $line = <$IN>) {
 		$c += 1;
 
-		if ($line =~ /[^[:alpha:]]\Q$misspelled\E[^[:alpha:]]/) {
+		if ($line =~ /[^[:alpha:]]*\Q$misspelled\E[^[:alpha:]]*/) {
 			# sometimes the line number in po->reference is not exactly where
 			# c.loc is, e.g:
 			# [% c.loc("
