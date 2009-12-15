@@ -1544,13 +1544,13 @@ sub spelchek {
 
 	$speller->set_option('lang',$lang);
 	load_local_dict($speller, $LOCAL_DICT_FILE);
-	load_local_dict($speller, $COMMON_DICT_FILE);
+	my $case_sensitive = 1;
+	load_local_dict($speller, $COMMON_DICT_FILE, $case_sensitive);
 
-	my $case_sensitive = 0;
+	$case_sensitive = 0;
 	load_local_dict($speller,
 						$ABBREVIATION_FILE,
 						$case_sensitive,
-						0, # case insensitive
 						0, # don't add to suggestion
 				);
 
