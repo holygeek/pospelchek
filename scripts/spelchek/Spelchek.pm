@@ -111,7 +111,7 @@ sub reference_to_meta {
 					:
 					([a-z_]+)         # Primary key column name
 					=
-					([0-9]+)          # Primary key value
+					([^:]+)          # Primary key value
 					:
 					([a-z_]+)         # Column name
 					# $database_reference
