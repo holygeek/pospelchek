@@ -1275,7 +1275,7 @@ sub handle_unknown_word {
 		print_header('UNKNOWN COMPOUND WORD');
 	}
 	else {
-		print_header('UNKNOWN WORD');
+		print_header('UNKNOWN WORD: ' . color($MISSPELLED_COLOR) . "$misspelled". color('reset') . ' ');
 	}
 
 	# print colored [$MISSPELLED_COLOR], "$misspelled [$original_word]";
