@@ -1759,8 +1759,10 @@ sub bootstrap_or_exit {
 		$TERMINAL_WIDTH = $wchar;
 	}
 
-	print_header(' REMINDER ');
-	print "Due knot trussed yore spell chequer two fined awl miss steaks.\n";
+	if (! $opt_summary_only) {
+		print_header(' REMINDER ');
+		print "  Due knot trussed yore spell chequer two fined awl miss steaks.\n";
+	}
 
 	if ($LANGUAGE eq 'en_US' && ! $opt_summary_only) {
 		confirm_en_US_po_file_is_uptodate_or_exit();
