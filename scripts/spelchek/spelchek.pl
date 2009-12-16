@@ -56,6 +56,7 @@ my $CORRECTED_COLOR  = 'black on_green';
 my %internal_dict_has;
 my %replace_all;
 my %ignored_phrase_count_for;
+my %ignored_phrase_regex_for;
 my $statistics_for = {
 	total_word_count => 0,
 	incorrect_word_count => 0,
@@ -1419,6 +1420,26 @@ sub load_local_dict {
 	}
 }
 
+sub ignore_phrase_to_regex {
+	my $text = shift;
+
+	# literal-quote each word in ignored phrase
+	my @chunks = split(/\s+/, $text);
+	@chunks = map("\Q$_\E", @chunks);
+	my $regex = join("( |\\\\[nt])+", @chunks);
+
+	# Add word boundary (for beginning, tab and newlines too) if there's no
+	# punctuations at either end
+	if ($regex !~ /^[[:punct:]]/) {
+		$regex = "(\\\\[nt]|\\b)$regex";
+	}
+	if ($regex !~ /[[:punct:]]$/) {
+		$regex = "$regex\\b";
+	}
+
+	return $regex;
+}
+
 sub load_ignored_phrases {
 	if ( ! -f $IGNORED_PHRASES_FILE ) {
 		return;
@@ -1428,6 +1449,7 @@ sub load_ignored_phrases {
 		or die "Could not open $IGNORED_PHRASES_FILE: $OS_ERROR";
 	while (my $line = <$IGNORED_PHRASES>) {
 		chomp $line;
+		$ignored_phrase_regex_for{$line} = ignore_phrase_to_regex($line);
 		$ignored_phrase_count_for{$line} = 0;
 	}
 	close $IGNORED_PHRASES;
@@ -1530,7 +1552,8 @@ sub remove_ignored_phrases {
 	my ($msgstr) = @_;
 
 	foreach my $phrase (@IGNORED_PHRASES) {
-		my $nsubs = $msgstr =~ s/\b($phrase)\b/' ' x length($1)/gmse;
+		my $regex = $ignored_phrase_regex_for{$phrase};
+		my $nsubs = $msgstr =~ s/($regex)/' ' x length($1)/gmse;
 		$ignored_phrase_count_for{$phrase} += $nsubs;
 	}
 
