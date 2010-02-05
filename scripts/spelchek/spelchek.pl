@@ -22,14 +22,17 @@ use lib "$Bin";
 use Spelchek;
 
 my %opts;
-my $valid_option = getopts('sued:', \%opts);
+my $valid_option = getopts('sued:w:', \%opts);
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
+# -e    'Indicate success/fail in exit value'
 # -d n  'debug level is n'
+# -w n  'header line width is n'
 my $opt_summary_only = 0;
 my $opt_debug_level = 0;
 my $opt_exit_value = 0;
 my $opt_show_unknown_word_list = 1;
+my $opt_header_line_width = 0;
 
 my $pristine_msgstr;
 my $current_msgstr_cleaned;
@@ -83,6 +86,14 @@ if (defined $opts{u}) {
 }
 if (defined $opts{e}) {
 	$opt_exit_value = 1;
+}
+if (defined $opts{w}) {
+	if ($opts{w} =~ /^[0-9]+$/) {
+		$opt_header_line_width = int($opts{w});
+	} else {
+		print STDERR "Error: argument to -w must be numeric.\n";
+		exit 1;
+	}
 }
 
 my $me = basename(__FILE__);
@@ -1754,9 +1765,13 @@ sub bootstrap_or_exit {
 		exit 0;
 	}
 
-	my ($wchar, $hchar, $wpixels, $hpixels) = GetTerminalSize();
-	if (defined $wchar) {
-		$TERMINAL_WIDTH = $wchar;
+	if ($opt_header_line_width == 0) {
+		my ($wchar, $hchar, $wpixels, $hpixels) = GetTerminalSize();
+		if (defined $wchar) {
+			$TERMINAL_WIDTH = $wchar;
+		}
+	} else {
+		$TERMINAL_WIDTH = $opt_header_line_width;
 	}
 
 	if (! $opt_summary_only) {
