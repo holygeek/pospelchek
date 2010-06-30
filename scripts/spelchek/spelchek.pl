@@ -989,7 +989,7 @@ sub replace_en_US_db_content {
 	#print colored ['black on_yellow'],
 		  #"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
 
-	my $sql_line_no = Spelchek::get_sql_line_for($meta);
+	my $sql_line_no = Spelchek::get_sql_file_and_line_for($meta);
 	return replace_first_occurrence(
 			$Spelchek::sql_file,
 			$sql_line_no,

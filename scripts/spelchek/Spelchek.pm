@@ -52,7 +52,7 @@ sub get_config {
 	return \%conf;
 }
 
-sub get_sql_line_for {
+sub get_sql_file_and_line_for {
 	my $meta = shift;
 
 	my $table = $meta->{table};

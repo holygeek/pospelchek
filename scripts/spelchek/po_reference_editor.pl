@@ -45,7 +45,7 @@ sub edit_db {
 			$misspelled
 		);
 
-	my $sql_line_no = Spelchek::get_sql_line_for($meta);
+	my $sql_line_no = Spelchek::get_sql_file_and_line_for($meta);
 	Spelchek::edit_file(
 			$conf{text_editor},
 			$sql_file,
