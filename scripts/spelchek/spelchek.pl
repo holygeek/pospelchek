@@ -989,12 +989,13 @@ sub replace_en_US_db_content {
 	#print colored ['black on_yellow'],
 		  #"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
 
-	my $sql_line_no = Spelchek::get_sql_file_and_line_for($meta);
-	return replace_first_occurrence(
-			$Spelchek::sql_file,
-			$sql_line_no,
+	my ($table_sql_file, $line_no) = Spelchek::get_sql_file_and_line_for($meta);
+	my $line_number_replaced = replace_first_occurrence(
+			$table_sql_file,
+			$line_no,
 			$misspelled,$suggested_word
 		);
+	return ($table_sql_file, $line_number_replaced);
 }
 
 sub replace_misspelling {
@@ -1075,7 +1076,7 @@ sub replace_in_en_US_sources {
 	foreach my $source (Spelchek::get_source_meta($po->reference())) {
 		if ($source->{type} eq 'DB') {
 			my $line_no = get_po_line($po->msgid());
-			my $sql_line_no_replaced
+			my ($table_sql_file, $sql_line_no_replaced)
 				= replace_en_US_db_content(
 						$source->{meta},
 						$line_no,
@@ -1087,7 +1088,7 @@ sub replace_in_en_US_sources {
 					->{replacements}
 				->{"$original_word -> $suggested_word"} += 1;
 				my $meta = {
-					filename => $Spelchek::sql_file,
+					filename => $table_sql_file,
 					line_no  => $sql_line_no_replaced,
 				};
 				report_on_text_replacement($meta,

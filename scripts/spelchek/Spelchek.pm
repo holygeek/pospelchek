@@ -1,11 +1,13 @@
 package Spelchek;
 use Config::General;
 use Term::ANSIColor;
+use File::Slurp;
 
 our $spellcheckrc = $ENV{HOME} . "/.spellcheckrc";
 my $default_text_editor
 	= "vi %{filename} +%{line} -c 'set hlsearch' -c 'normal /%{wrongword}'";
-our $sql_file = 'datadump.sql';
+my $mysql_dir = 'scripts/mysql';
+my $db_files_dir = $mysql_dir . '/tables';
 our $spellcheck_fix_sql_file = 'spellcheck_fix.sql';
 
 #my $database_reference
@@ -56,48 +58,39 @@ sub get_sql_file_and_line_for {
 	my $meta = shift;
 
 	my $table = $meta->{table};
-	my $primary_key_column = $meta->{primary_key_column};
+	# my $primary_key_column = $meta->{primary_key_column}; # not used
 	my $primary_key_value = $meta->{primary_key_value};
 	my $column_name = $meta->{column_name};
 
-	open my $SQL, '<', $sql_file
-		or die "Could not open $sql_file";
-
-	my $table_creation = 'CREATE TABLE IF NOT EXISTS `'. $table. '`';
-	my $c = 0;
-	while (my $line = <$SQL>) {
-		$c += 1;
-		if ($line =~ /^$table_creation/) {
-			my $column_no = 0;
-			my $column_matcher = '  `'.$column_name.'`';
-			while ($line = <$SQL>) {
-				$c += 1;
-				$column_no += 1;
-				if ($line =~ /^$column_matcher/) {
-					last;
-				}
-				if ($line =~ /^\)/) {
-					print "Could not get line number for $table  $column_name\n";
-					return 0;
-				}
-			}
-
-			my $insert_matcher = 'INSERT INTO `'.$table.'`';
-			while ($line = <$SQL>) {
-				$c += 1;
-				if ($line =~ /^$insert_matcher/) {
-					while ($line = <$SQL>) {
-						$c += 1;
-						if ($line =~ /^\($primary_key_value, /) {
-							return $c;
-						}
-					}
-				}
-			}
+	# Verify that the column exists in $table.sql
+	my @table_structure = read_file("$db_files_dir/$table.sql");
+	my $found_column = 0;
+	foreach my $line (@table_structure) {
+		if ($line =~ /^  `$column_name` /) {
+			$found_column = 1;
+			last;
 		}
 	}
-	close $SQL;
-	return 0;
+
+	if (!$found_column) {
+		print "Column `$column_name` does not exist in Table $table\n";
+		return (undef, 0);
+	}
+
+	my $sql_data_file = "$db_files_dir/$table.data.sql";
+	my @table_data = read_file("$sql_data_file");
+
+	my $line_number = 0;
+	foreach my $line (@table_data) {
+		$line_number += 1;
+		if ($line =~ /^\('?$primary_key_value'?,/) {
+			return ($sql_data_file, $line_number);
+			last;
+		}
+	}
+
+	print "Could not get line number for $table  $column_name\n";
+	return (undef, 0);
 }
 
 sub reference_to_meta {

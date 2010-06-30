@@ -10,7 +10,6 @@ use Term::ANSIColor;
 use lib "$Bin";
 use Spelchek;
 my $spellcheck_fix_sql_file = $Spelchek::spellcheck_fix_sql_file;
-my $sql_file = $Spelchek::sql_file;
 
 my %conf = %{Spelchek::get_config()};
 
@@ -45,11 +44,11 @@ sub edit_db {
 			$misspelled
 		);
 
-	my $sql_line_no = Spelchek::get_sql_file_and_line_for($meta);
+	my ($table_sql_file, $line_no) = Spelchek::get_sql_file_and_line_for($meta);
 	Spelchek::edit_file(
 			$conf{text_editor},
-			$sql_file,
-			$sql_line_no,
+			$table_sql_file,
+			$line_no,
 			$misspelled
 		);
 }
