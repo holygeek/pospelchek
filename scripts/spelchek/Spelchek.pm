@@ -1,4 +1,7 @@
 package Spelchek;
+use strict;
+use warnings;
+
 use Config::General;
 use Term::ANSIColor;
 use File::Slurp;
@@ -94,49 +97,53 @@ sub get_sql_file_and_line_for {
 }
 
 sub reference_to_meta {
-	my $reference = shift;
+	my $references = shift;
 
-	my $meta;
+	my @meta;
 
-	if ( $reference =~ m{
-					lib/I18N/db/
-					([A-Za-z]+)\.db   # Table name
-					:
-					([a-z_]+)         # Primary key column name
-					=
-					([^:]+)          # Primary key value
-					:
-					([a-z_]+)         # Column name
-					# $database_reference
-	}x) {
-		$meta = {
-					type =>
-						'DB',
+	# There could be two file references on a single line like this:
+	# lib/Calculations.pm:41 lib/Activity.pm:35
+	foreach my $reference (split(/\s+/, $references)) {
+		if ( $reference =~ m{
+				lib/I18N/db/
+				([A-Za-z]+)\.db   # Table name
+				:
+				([a-z_]+)         # Primary key column name
+				=
+				([^:]+)          # Primary key value
+				:
+				([a-z_]+)         # Column name
+				# $database_reference
+				}x) {
+			push @meta, {
+				type =>
+					'DB',
 					meta => {
 						table => $1,
 						primary_key_column => $2,
 						primary_key_value => $3,
 						column_name => $4,
 					}
-				};
-	}
-	elsif ($reference =~ /^[^:]+:\d+$/) {
-		my ($filename, $line_no) = split(/:/, $reference);
-		$meta = {
-					type =>
-						'FILE',
+			};
+		}
+		elsif ($reference =~ /^[^:]+:\d+$/) {
+			my ($filename, $line_no) = split(/:/, $reference);
+			push @meta, {
+				type =>
+					'FILE',
 					meta =>
-						{
-							filename => $filename,
-							line_no  => $line_no,
-						}
-				};
-	}
-	else {
-		die "Unsupported reference [$reference]\n";
+					{
+						filename => $filename,
+						line_no  => $line_no,
+					}
+			};
+		}
+		else {
+			die __FILE__ . ": Unsupported reference [$reference]\n";
+		}
 	}
 
-	return $meta;
+	return @meta;
 }
 
 sub get_source_meta {
@@ -146,8 +153,8 @@ sub get_source_meta {
 	# lib/I18N/db/Questions.db:question_id=109:question"
 	my @source_meta;
 	foreach my $reference (split(/\n/, $references)) {
-		my $meta = reference_to_meta($reference);
-		push @source_meta, $meta;
+		my @meta = reference_to_meta($reference);
+		push @source_meta, @meta;
 	}
 	return @source_meta;
 }

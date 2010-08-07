@@ -61,19 +61,21 @@ if (scalar @ARGV != 3) {
 
 foreach my $reference (split(/\n/, $references)) {
 
-	Spelchek::notify_action("Editing $reference");
+	Spelchek::notify_action("Editing '$reference'");
 
-	my $source = Spelchek::reference_to_meta($reference);
+	my @sources = Spelchek::reference_to_meta($reference);
 
-	if ($source->{type} eq 'DB') {
-		edit_db($source->{meta}, $misspelled, $po_line);
-	}
-	elsif ($source->{type} eq 'FILE') {
-		Spelchek::edit_file(
-				$conf{text_editor},
-				$base_dir . '/' . $source->{meta}->{filename},
-				$source->{meta}->{line_no},
-				$misspelled
-			);
+	foreach my $source (@sources) {
+		if ($source->{type} eq 'DB') {
+			edit_db($source->{meta}, $misspelled, $po_line);
+		}
+		elsif ($source->{type} eq 'FILE') {
+			Spelchek::edit_file(
+					$conf{text_editor},
+					$base_dir . $source->{meta}->{filename},
+					$source->{meta}->{line_no},
+					$misspelled
+					);
+		}
 	}
 }

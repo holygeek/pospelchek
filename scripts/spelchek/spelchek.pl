@@ -319,7 +319,7 @@ sub join_references {
 	my $references = shift;
 
 	$references =~ s/,/\\,/gxms;
-	return join(',', split(/\n/, $references));
+	return join(',', split(/\s+/, $references));
 }
 
 sub edit_en_US_source {
