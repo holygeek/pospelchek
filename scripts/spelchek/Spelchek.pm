@@ -106,23 +106,23 @@ sub reference_to_meta {
 	foreach my $reference (split(/\s+/, $references)) {
 		if ( $reference =~ m{
 				lib/I18N/db/
-				([A-Za-z]+)\.db   # Table name
+				(?<table_name>[A-Za-z]+)(-.*)?\.db   # Table name
 				:
-				([a-z_]+)         # Primary key column name
+				(?<primary_key_column>[a-z_]+)         # Primary key column name
 				=
-				([^:]+)          # Primary key value
+				(?<primary_key_value>[^:]+)          # Primary key value
 				:
-				([a-z_]+)         # Column name
+				(?<column_name>[a-z_]+)         # Column name
 				# $database_reference
 				}x) {
 			push @meta, {
 				type =>
 					'DB',
 					meta => {
-						table => $1,
-						primary_key_column => $2,
-						primary_key_value => $3,
-						column_name => $4,
+						table => $+{table_name},
+						primary_key_column => $+{primary_key_column},
+						primary_key_value => $+{primary_key_value},
+						column_name => $+{column_name},
 					}
 			};
 		}
