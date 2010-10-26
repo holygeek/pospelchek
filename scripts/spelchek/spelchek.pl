@@ -346,6 +346,7 @@ sub get_po_line {
 	if ($line_number == 0) {
 		die "Couldn't get line no for msgid '$msgid_needle' in $po_file";
 	}
+	return $line_number;
 }
 
 sub edit_po_file {
