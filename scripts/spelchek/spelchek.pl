@@ -1098,7 +1098,7 @@ sub replace_in_po_file {
 }
 
 sub sort_ignored_phrases {
-	# This need to be sorted from longest to shortest so that the sorter
+	# This need to be sorted from longest to shortest so that the shorter
 	# phrases do no get in the way of the longer one when we check for their
 	# occurrence later.
 	@IGNORED_PHRASES
