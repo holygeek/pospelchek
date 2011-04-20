@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use Carp qw/croak/;
 use Config::General;
-use Config::General;
 use Data::Dumper;
 use English;
 use File::Basename;
