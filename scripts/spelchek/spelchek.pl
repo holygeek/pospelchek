@@ -791,7 +791,8 @@ sub print_suggestions {
 
 sub highlight {
 	my ($color, $misspelled, $text) = @_;
-	$text =~ s/((\\[nt]|[^[:alpha:]])*)\Q$misspelled\E(([^[:alpha:]])*)/"$1".color($color).$misspelled.color('reset')."$3"/sge;
+	my $misspelled_regex = Spelchek::get_misspelled_regex($misspelled);
+	$text =~ s/$misspelled_regex/"$1".color($color).$misspelled.color('reset')."$2"/sge;
 	return $text;
 }
 
@@ -964,9 +965,7 @@ sub replace_en_US_db_content {
 sub replace_misspelling {
 	my ($misspelled, $replacement, $text) = @_;
 
-	$text =~ s/(\\[nt]|[^[:alpha:]]*)$misspelled([^[:alpha:]]*)/$1$replacement$2/;
-
-	return $text;
+	return Spelchek::replace_misspelling($misspelled, $replacement, $text);
 }
 
 sub replace_first_occurrence {
@@ -980,7 +979,8 @@ sub replace_first_occurrence {
 	my $progress_report = '';
 	for my $c ($line_no - 1 .. scalar @lines - 1) {
 		my $orig_line = $lines[$c];
-		if ($lines[$c] =~ /(\\[nt]|[^[:alpha:]])$misspelled[^[:alpha:]]/) {
+		my $misspelled_regex = Spelchek::get_misspelled_regex($misspelled);
+		if ($lines[$c] =~ /$misspelled_regex/) {
 			$lines[$c] = replace_misspelling($misspelled, $suggested_word, $lines[$c]);
 			if ($lines[$c] ne $orig_line) {
 				$replacement_done_at = $c + 1;
@@ -1122,6 +1122,9 @@ sub action_handler_ignore_phrase {
 		# Set it to 1 so that it won't show up as unmatched.
 		# Trust the user that the phrase happens at least once.
 		$ignored_phrase_count_for{$GIVEN_TEXT} = 1;
+		$ignored_phrase_regex_for{$GIVEN_TEXT} = ignore_phrase_to_regex($GIVEN_TEXT);
+
+		push @IGNORED_PHRASES, $GIVEN_TEXT;
 		sort_ignored_phrases();
 	}
 	notify_action("Added '$GIVEN_TEXT' to $IGNORED_PHRASES_FILE");

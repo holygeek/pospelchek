@@ -12,6 +12,18 @@ my $default_text_editor
 my $mysql_dir = 'scripts/mysql';
 my $db_files_dir = $mysql_dir . '/tables';
 our $spellcheck_fix_sql_file = 'spellcheck_fix.sql';
+our $PO_PRE_WORD_REGEX  = qr/
+							 \\[nt]           # Embedded newline or tab
+							 |                # or
+							 [^[:alpha:]]+    # Non alphabet
+							 |                # or
+							 ^                # Beginning of sentence
+						 /x;
+our $PO_POST_WORD_REGEX = qr/
+							 [^[:alpha:]]+   # Non alphabet
+							 |
+							 $
+						  /x;
 
 #my $database_reference
 #	= "lib/I18N/db/([A-Za-z]+).db:([a-z_]+)=([0-9]+):([a-z_]+)";
@@ -292,5 +304,20 @@ sub add_MySQL_update_statement_to_file {
 
 	return ($original, $sql_statement);
 }
+
+sub replace_misspelling {
+	my ($misspelled, $replacement, $text) = @_;
+
+	my $misspelled_regex = get_misspelled_regex($misspelled);
+	$text =~ s/$misspelled_regex/$1$replacement$2/;
+
+	return $text;
+}
+
+sub get_misspelled_regex {
+	my ($misspelled) = @_;
+	return qr/($PO_PRE_WORD_REGEX)\Q$misspelled\E($PO_POST_WORD_REGEX)/;
+}
+
 
 1;
