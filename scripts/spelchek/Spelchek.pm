@@ -270,7 +270,8 @@ sub add_MySQL_update_statement_to_file {
 	if (defined $suggested_word) {
 		#print "BEFORE $new_msgid\n";
 		#print "TO REPLACE: $misspelled with $suggested_word\n";
-		$new_msgid =~ s/([^[:alpha:]]*)$misspelled([^[:alpha:]]*)/$1$suggested_word$2/;
+		my $misspelled_regex = get_misspelled_regex($misspelled);
+		$new_msgid =~ s/$misspelled_regex/$1$suggested_word$2/;
 		$new_msgid =~ s/'/''/g;
 		#print "AFTER $new_msgid\n";
 		#print "\n\nSuggested word is $suggested_word\n\n";
