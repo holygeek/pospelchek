@@ -22,24 +22,26 @@ use Spelchek;
 use PO;
 
 my %opts;
-my $valid_option = getopts('sued:w:', \%opts);
+my $valid_option = getopts('sued:w:f:', \%opts);
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
 # -e    'Indicate success/fail in exit value'
 # -d n  'debug level is n'
 # -w n  'header line width is n'
+# -f <phrase to fix>
 my $opt_summary_only = 0;
 my $opt_debug_level = 0;
 my $opt_exit_value = 0;
 my $opt_show_unknown_word_list = 1;
 my $opt_header_line_width = 0;
+my $opt_fix_phrase;
 
-my $pristine_msgstr;
-my $current_msgstr_cleaned;
-my $current_msgstr_stripped;
-my $punctuations_removed;
-my $digits_removed;
-my $dashes_and_quotes_removed;
+my $pristine_msgstr           = '';
+my $current_msgstr_cleaned    = '';
+my $current_msgstr_stripped   = '';
+my $punctuations_removed      = '';
+my $digits_removed            = '';
+my $dashes_and_quotes_removed = '';
 my %conf;
 
 my $LONGEST_COMMAND_LENGTH = 0;
@@ -94,6 +96,9 @@ if (defined $opts{w}) {
 		print STDERR "Error: argument to -w must be numeric.\n";
 		exit 1;
 	}
+}
+if (defined $opts{f}) {
+	$opt_fix_phrase = $opts{f};
 }
 
 my $me = basename(__FILE__);
@@ -1587,6 +1592,14 @@ sub spelchek {
 
 		my $msgstr = $po->msgstr();
 		$pristine_msgstr = $msgstr;
+
+		if (defined $opt_fix_phrase) {
+		   if ($msgid =~ /\Q$opt_fix_phrase\E/) {
+			   handle_unknown_word($speller, $opt_fix_phrase, $po, $opt_fix_phrase);
+		   }
+		   next;
+	   }
+
 
 		$msgstr = remove_ignored_phrases($msgstr);
 
