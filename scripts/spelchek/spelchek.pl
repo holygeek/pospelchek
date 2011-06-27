@@ -1451,7 +1451,12 @@ sub remove_punctuations_but_not {
 	my ($msgstr, $but_not) = @_;
 
 	my $removed = '';
-	$msgstr =~ s/(([$but_not])|([[:punct:]]))/$removed .= $3 if defined $3;$2 || ' ';/ge;
+	$msgstr =~ s{(([$but_not])|([[:punct:]]))($Spelchek::PO_POST_WORD_REGEX)}
+				{$removed .= $3 if defined $3;($2 || ' ') . $4;}ge;
+	$msgstr =~ s{($Spelchek::PO_PRE_WORD_REGEX)(([$but_not])|([[:punct:]]))}
+				{$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ');}ge;
+	$msgstr =~ s{($Spelchek::PO_PRE_WORD_REGEX)(([$but_not])|([[:punct:]]))($Spelchek::PO_POST_WORD_REGEX)}
+				{$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ')}ge;
 
 	return ($msgstr, $removed);
 }
@@ -1505,6 +1510,9 @@ sub remove_insignificant_characters {
 	# Remove escaped newlines, tabs
 	$msgstr =~ s/\\n/\n/gs;
 	$msgstr =~ s/\\t/ /gs;
+
+	#$msgstr =~ s/[()]//g;
+	$msgstr =~ s{/}{ }g;
 
 	$current_msgstr_stripped = $msgstr;
 
