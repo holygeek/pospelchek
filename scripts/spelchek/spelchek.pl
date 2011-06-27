@@ -329,6 +329,8 @@ sub edit_en_US_source {
 	my $reference  = join_references($po->reference());
 
 	my $cmd = $conf{po_reference_editor};
+
+	$misspelled =~ s{'}{\\'}g;
 	$cmd =~ s/%{wrongword}/$misspelled/g;
 	$cmd =~ s/%{po_line}/$po_line/g;
 	$cmd =~ s/%{references}/$reference/g;
