@@ -64,7 +64,7 @@ sub get_config {
 	$conf{text_editor} ||= $default_text_editor;
 	$conf{po_reference_editor}
 		||=   "po_reference_editor.pl "
-			. "%{wrongword} %{po_line} %{references}";
+			. "'%{wrongword}' %{po_line} %{references}";
 
 	return \%conf;
 }
