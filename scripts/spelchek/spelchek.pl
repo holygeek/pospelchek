@@ -1521,9 +1521,6 @@ sub remove_insignificant_characters {
 	#$msgstr =~ s/[()]//g;
 	$msgstr =~ s{/}{ }g;
 
-	$current_msgstr_stripped = $msgstr;
-
-
 	# ($msgstr, $punctuations_removed) = remove_punctuations_but_not_dash_and_quote($msgstr);
 	if ($LANGUAGE eq 'en_US') {
 		# This is so that we can catch mistakes like
@@ -1531,6 +1528,9 @@ sub remove_insignificant_characters {
 		($msgstr, $punctuations_removed) = remove_punctuations_but_not($msgstr, "-'");
 	}
 	else {
+		$msgstr =~ s{-}{ }g;
+		$current_msgstr_stripped = $msgstr;
+
 		($msgstr, $punctuations_removed) = remove_punctuations_but_not($msgstr, "'");
 	}
 	($msgstr, $digits_removed)       = remove_digits($msgstr);
