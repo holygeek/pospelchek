@@ -54,16 +54,18 @@ sub run_cmd {
 }
 
 sub get_config {
-	if ( ! -f $spellcheckrc ) {
-		return {};
+	my %conf;
+
+	if ( -f $spellcheckrc ) {
+		my $c = new Config::General($spellcheckrc);
+		%conf = $c->getall;
 	}
 
-	my $c = new Config::General($spellcheckrc);
-	my %conf = $c->getall;
-
 	$conf{text_editor} ||= $default_text_editor;
+
+	# FIXME use FindBin instead of ./
 	$conf{po_reference_editor}
-		||=   "po_reference_editor.pl "
+		||=   "./po_reference_editor.pl "
 			. "'%{wrongword}' %{po_line} %{references}";
 
 	return \%conf;
