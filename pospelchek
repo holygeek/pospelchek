@@ -7,6 +7,7 @@ use Data::Dumper;
 use English;
 use File::Basename;
 use File::Slurp qw/slurp/;
+use File::Spec::Functions;
 use FindBin qw($Bin);
 use Getopt::Std;
 use HTML::Strip;
@@ -22,7 +23,8 @@ use Spelchek;
 use PO;
 
 my %opts;
-my $valid_option = getopts('sued:w:f:', \%opts);
+my $valid_option = getopts('sueb:d:w:f:', \%opts);
+# -b <base_dir> for files where text came from
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
 # -e    'Indicate success/fail in exit value'
@@ -30,6 +32,7 @@ my $valid_option = getopts('sued:w:f:', \%opts);
 # -w n  'header line width is n'
 # -f <phrase to fix>
 my $opt_summary_only = 0;
+my $opt_base_dir;
 my $opt_debug_level = 0;
 my $opt_exit_value = 0;
 my $opt_show_unknown_word_list = 1;
@@ -77,6 +80,7 @@ my $MAX_SUGGEST = 10;
 
 load_spellcheckrc();
 
+$opt_base_dir = $opts{b} || './';
 if (defined $opts{s}) {
 	$opt_summary_only = 1;
 }
@@ -813,7 +817,7 @@ sub show_context_lines {
 	my $filename   = $file_meta->{filename};
 	my $line_no = $file_meta->{line_no};
 
-	my $fullpath = $filename;
+	my $fullpath = catfile($opt_base_dir, $filename);
 
 	print_header(" $fullpath : $line_no ");
 
@@ -1023,7 +1027,7 @@ sub replace_first_occurrence {
 
 sub replace_text_content {
 	my ($meta, $misspelled, $suggested_word) = @_;
-	my $fullpath = $meta->{filename};
+	my $fullpath = catfile($opt_base_dir, $meta->{filename});
 	return replace_first_occurrence($fullpath, $meta->{line_no}, $misspelled, $suggested_word);
 
 }
