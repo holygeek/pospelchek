@@ -23,9 +23,10 @@ use Spelchek;
 use PO;
 
 my %opts;
-my $valid_option = getopts('sueb:d:w:f:l:', \%opts);
+my $valid_option = getopts('sueib:d:w:f:l:', \%opts);
 # -l <lang>   lang looks like en_US, zh_CN
 # -b <base_dir> for files where text came from
+# -i    'Edit po files when making correction (as opposed to the source)'
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
 # -e    'Indicate success/fail in exit value'
@@ -47,6 +48,7 @@ my $opt_summary_only = 0;
 my $opt_base_dir;
 my $opt_debug_level = 0;
 my $opt_exit_value = 0;
+my $opt_edit_in_place = 0;
 my $opt_show_unknown_word_list = 1;
 my $opt_header_line_width = 0;
 my $opt_fix_phrase;
@@ -92,6 +94,9 @@ my $MAX_SUGGEST = 10;
 load_spellcheckrc();
 
 $opt_base_dir = $opts{b} || './';
+if (defined $opts{i}) {
+    $opt_edit_in_place = 1;
+}
 if (defined $opts{s}) {
 	$opt_summary_only = 1;
 }
@@ -337,7 +342,7 @@ sub join_references {
 	return join(',', split(/\s+/, $references));
 }
 
-sub edit_en_US_source {
+sub edit_source {
 	# Note: The following only apply to en_US
 	my ($po, $misspelled, $po_line) = @_;
 
@@ -377,9 +382,9 @@ sub action_handler_edit_source {
 	my ($speller, $misspelled, $po, $original_word) = @_;
 	my $success = 1;
 
-	if ($LANGUAGE eq 'en_US') {
+	if (! $opt_edit_in_place) {
 		my $po_line = get_po_line($po->msgid());
-		$success = edit_en_US_source($po, $misspelled, $po_line);
+		$success = edit_source($po, $misspelled, $po_line);
 	} else {
 		my $po_line = get_po_line($po->msgid(), 'for msgstr');
 		$success = edit_po_file($po, $original_word, $po_line);
