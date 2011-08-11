@@ -23,7 +23,7 @@ use Spelchek;
 use PO;
 
 my %opts;
-my $valid_option = getopts('sueib:d:w:f:l:', \%opts);
+my $valid_option = getopts('sueipb:d:w:f:l:', \%opts);
 # -l <lang>   lang looks like en_US, zh_CN
 # -b <base_dir> for files where text came from
 # -i    'Edit po files when making correction (as opposed to the source)'
@@ -33,7 +33,9 @@ my $valid_option = getopts('sueib:d:w:f:l:', \%opts);
 # -d n  'debug level is n'
 # -w n  'header line width is n'
 # -f <phrase to fix>
-if (! defined $ARGV[0]) {
+# -p    'input file is template (pot) file'
+my $po_file = $ARGV[0];
+if (! defined $po_file) {
 	print_usage();
 	exit 0;
 }
@@ -52,6 +54,7 @@ my $opt_edit_in_place = 0;
 my $opt_show_unknown_word_list = 1;
 my $opt_header_line_width = 0;
 my $opt_fix_phrase;
+my $opt_is_pot_file = 0;
 
 my $pristine_msgstr           = '';
 my $current_msgstr_cleaned    = '';
@@ -119,6 +122,9 @@ if (defined $opts{w}) {
 }
 if (defined $opts{f}) {
 	$opt_fix_phrase = $opts{f};
+}
+if (defined $opts{p}) {
+    $opt_is_pot_file = 1;
 }
 
 my $me = basename(__FILE__);
@@ -355,13 +361,11 @@ sub edit_source {
 	$cmd =~ s/%{po_line}/$po_line/g;
 	$cmd =~ s/%{references}/$reference/g;
 
-	return Spelchek::run_cmd($cmd);
+	return Spelchek::run_cmd("BASE_DIR=$opt_base_dir $cmd");
 }
 
 sub get_po_line {
 	my ($msgid_needle, $for_msgstr) = @_;
-
-	my $po_file = "$LANGUAGE.po";
 
 	my $line_number = PO::get_po_line($po_file, $msgid_needle, $for_msgstr);
 	if ($line_number == 0) {
@@ -1228,11 +1232,17 @@ sub show_msgid_and_msgstr {
 	my ($po, $word) = @_;
 	print colored ['black on_green'], " msgid";
 	print ' ';
-	print $po->msgid();
-	print "\n";
-	print colored ['black on_green'], "msgstr";
-	print ' ';
-	print highlight($MISSPELLED_COLOR, $word, $po->msgstr());
+	if ($opt_is_pot_file) {
+		print highlight($MISSPELLED_COLOR, $word, $po->msgid());
+	} else {
+		print $po->msgid();
+		print "\n";
+	}
+	if (! $opt_is_pot_file) {
+		print colored ['black on_green'], "msgstr";
+		print ' ';
+		print highlight($MISSPELLED_COLOR, $word, $po->msgstr());
+	}
 	print "\n";
 }
 
@@ -1606,6 +1616,9 @@ sub spelchek {
 		next if $msgid eq '""';
 
 		my $msgstr = $po->msgstr();
+		if ($opt_is_pot_file) {
+		    $msgstr = $msgid;
+		}
 		$pristine_msgstr = $msgstr;
 
 		if (defined $opt_fix_phrase) {
@@ -1796,7 +1809,6 @@ sub cleanup {
 sub thing_doer {
 	my $language = shift;
 
-	my $po_file = "$language.po";
 	if ( ! -e $po_file ) {
 		if ($language eq 'en_US') {
 			print "For en_US please generate the en_US.po file by running 'make gettext LANGUAGE=en_US'\n";

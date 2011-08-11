@@ -6,6 +6,7 @@ use File::Basename;
 use Config::General;
 use FindBin qw($Bin);
 use Term::ANSIColor;
+use File::Spec::Functions;
 
 use lib "$Bin";
 use Spelchek;
@@ -72,7 +73,7 @@ foreach my $reference (split(/\n/, $references)) {
 		elsif ($source->{type} eq 'FILE') {
 			Spelchek::edit_file(
 					$conf{text_editor},
-					$base_dir . $source->{meta}->{filename},
+					catfile($base_dir, $source->{meta}->{filename}),
 					$source->{meta}->{line_no},
 					$misspelled
 					);
