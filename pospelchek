@@ -23,7 +23,8 @@ use Spelchek;
 use PO;
 
 my %opts;
-my $valid_option = getopts('sueb:d:w:f:', \%opts);
+my $valid_option = getopts('sueb:d:w:f:l:', \%opts);
+# -l <lang>   lang looks like en_US, zh_CN
 # -b <base_dir> for files where text came from
 # -u    'do not show unknown word list'
 # -s    'summary (wordcount) only'
@@ -31,6 +32,12 @@ my $valid_option = getopts('sueb:d:w:f:', \%opts);
 # -d n  'debug level is n'
 # -w n  'header line width is n'
 # -f <phrase to fix>
+if (! defined $ARGV[0]) {
+	print_usage();
+	exit 0;
+}
+
+my $LANGUAGE = $opts{l};
 my $opt_summary_only = 0;
 my $opt_base_dir;
 my $opt_debug_level = 0;
