@@ -38,6 +38,11 @@ if (! defined $ARGV[0]) {
 }
 
 my $LANGUAGE = $opts{l};
+if (! defined $LANGUAGE) {
+	$LANGUAGE = basename($ARGV[0]);
+	$LANGUAGE =~ s/.po$//;
+}
+
 my $opt_summary_only = 0;
 my $opt_base_dir;
 my $opt_debug_level = 0;
@@ -57,7 +62,6 @@ my %conf;
 my $LONGEST_COMMAND_LENGTH = 0;
 my $TERMINAL_WIDTH = 80;
 my $HALF_WIDTH = 36;
-my $LANGUAGE = $ARGV[0];
 my $LOCAL_DICT_FILE = "dict/$LANGUAGE.txt";
 my $ABBREVIATION_FILE = "dict/$LANGUAGE.abbr.txt";
 my $IGNORED_PHRASES_FILE = "dict/$LANGUAGE.ignore.phrases.txt";
@@ -256,11 +260,6 @@ Have fun spellchecking!
 	else {
 		print $usage_text;
 	}
-}
-
-if ($ARGV[0] eq 'ALL_SUPPORTED_LANGUAGES') {
-	print_usage();
-	exit 0;
 }
 
 sub notify_action {
