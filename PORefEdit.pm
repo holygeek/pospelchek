@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+package PORefEdit;
+
 use strict;
 use warnings;
 use Data::Dumper;
@@ -10,16 +11,6 @@ use File::Spec::Functions;
 
 use lib "$Bin";
 use Spelchek;
-my $spellcheck_fix_sql_file = $Spelchek::spellcheck_fix_sql_file;
-
-my %conf = %{Spelchek::get_config()};
-
-my $misspelled = $ARGV[0];
-my $po_line = $ARGV[1];
-my $references = $ARGV[2];
-$references =~ s/([^\\]),/$1\n/g;
-
-my $base_dir = $ENV{BASE_DIR} || '.';
 
 sub todo {
 	Spelchek::todo(@_);
@@ -54,29 +45,47 @@ sub edit_db {
 		);
 }
 
-if (scalar @ARGV != 3) {
-	my $me = basename(__FILE__);
-	print "Usage: $me <wrongword> <reference1,...>\n";
-	exit 1;
+sub edit {
+    my @argv = @_;
+
+    my $spellcheck_fix_sql_file = $Spelchek::spellcheck_fix_sql_file;
+
+    my %conf = %{Spelchek::get_config()};
+
+    my $misspelled = $argv[0];
+    my $po_line = $argv[1];
+    my $references = $argv[2];
+    $references =~ s/([^\\]),/$1\n/g;
+
+    my $base_dir = $ENV{BASE_DIR} || '.';
+
+
+    if (scalar @argv != 3) {
+	    my $me = basename(__FILE__);
+	    print "Usage: $me <wrongword> <reference1,...>\n";
+	    exit 1;
+    }
+
+    foreach my $reference (split(/\n/, $references)) {
+
+	    Spelchek::notify_action("Editing '$reference'");
+
+	    my @sources = Spelchek::reference_to_meta($reference);
+
+	    foreach my $source (@sources) {
+		    if ($source->{type} eq 'DB') {
+			    edit_db($source->{meta}, $misspelled, $po_line);
+		    }
+		    elsif ($source->{type} eq 'FILE') {
+			    Spelchek::edit_file(
+					    $conf{text_editor},
+					    catfile($base_dir, $source->{meta}->{filename}),
+					    $source->{meta}->{line_no},
+					    $misspelled
+					    );
+		    }
+	    }
+    }
 }
 
-foreach my $reference (split(/\n/, $references)) {
-
-	Spelchek::notify_action("Editing '$reference'");
-
-	my @sources = Spelchek::reference_to_meta($reference);
-
-	foreach my $source (@sources) {
-		if ($source->{type} eq 'DB') {
-			edit_db($source->{meta}, $misspelled, $po_line);
-		}
-		elsif ($source->{type} eq 'FILE') {
-			Spelchek::edit_file(
-					$conf{text_editor},
-					catfile($base_dir, $source->{meta}->{filename}),
-					$source->{meta}->{line_no},
-					$misspelled
-					);
-		}
-	}
-}
+1;
