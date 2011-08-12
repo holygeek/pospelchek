@@ -1778,7 +1778,7 @@ sub handle_unknown_word {
         print "')\n";
     }
 
-    if ( $LANGUAGE eq 'en_US' ) {
+    if ( $opt_is_pot_file ) {
         if ( $original_word =~ /&[a-z]+;/ ) {
             show_sources( $original_word, $po );
         }
