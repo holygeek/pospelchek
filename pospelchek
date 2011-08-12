@@ -223,7 +223,7 @@ sub get_sql_update_statement {
 sub edit_db {
 	my ($editor, $sql_file, $meta, $misspelled, $po_line) = @_;
 	add_MySQL_update_statement_to_file(
-			$$sql_file,
+			$sql_file,
 			$meta,
 			$misspelled,
 			$po_line,
@@ -231,7 +231,7 @@ sub edit_db {
 
 	edit_file(
 			$editor,
-			$$sql_file,
+			$sql_file,
 			get_last_line_no($sql_file),
 			$misspelled
 		);
