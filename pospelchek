@@ -22,17 +22,17 @@ my $mysql_dir               = 'scripts/mysql';
 my $db_files_dir            = $mysql_dir . '/tables';
 my $spellcheck_fix_sql_file = 'spellcheck_fix.sql';
 my $PO_PRE_WORD_REGEX       = qr/
-				\\[nt]           # Embedded newline or tab
-				|                # or
-				[^[:alpha:]]+    # Non alphabet
-				|                # or
-				^                # Beginning of sentence
-			 /x;
+                \\[nt]           # Embedded newline or tab
+                |                # or
+                [^[:alpha:]]+    # Non alphabet
+                |                # or
+                ^                # Beginning of sentence
+             /x;
 my $PO_POST_WORD_REGEX = qr/
-				[^[:alpha:]]+   # Non alphabet
-				|
-				$
-			/x;
+                [^[:alpha:]]+   # Non alphabet
+                |
+                $
+            /x;
 
 my %opts;
 my $valid_option = getopts( 'sueipb:d:w:f:l:', \%opts );
@@ -372,16 +372,16 @@ sub reference_to_meta {
     foreach my $reference ( split( /\s+/, $references ) ) {
         if (
             $reference =~ m{
-				lib/I18N/db/
-				(?<table_name>[A-Za-z]+)(-.*)?\.db   # Table name
-				:
-				(?<primary_key_column>[a-z_]+)         # Primary key column name
-				=
-				(?<primary_key_value>[^:]+)          # Primary key value
-				:
-				(?<column_name>[a-z_]+)         # Column name
-				# $database_reference
-				}x
+                lib/I18N/db/
+                (?<table_name>[A-Za-z]+)(-.*)?\.db   # Table name
+                :
+                (?<primary_key_column>[a-z_]+)       # Primary key column name
+                =
+                (?<primary_key_value>[^:]+)          # Primary key value
+                :
+                (?<column_name>[a-z_]+)              # Column name
+                # $database_reference
+                }x
           )
         {
             push @meta,
@@ -593,133 +593,133 @@ sub print_usage {
 
     my $usage_text = "
 NAME
-	$me - spellcheck a po/pot file
+    $me - spellcheck a po/pot file
 
 SYNOPSIS
-	$me [options] <po/pot file>
+    $me [options] <po/pot file>
 
 OPTIONS
 
-	-l <lang>
-		lang looks like en_US, zh_CN
+    -l <lang>
+        lang looks like en_US, zh_CN
 
-	-b <base_dir>
-		Look in <dir> for files where text came from
+    -b <base_dir>
+        Look in <dir> for files where text came from
 
-	-i
-		Edit po files when making correction (as opposed to the source)
+    -i
+        Edit po files when making correction (as opposed to the source)
 
-	-u
-		Do not show unknown word list
+    -u
+        Do not show unknown word list
 
-	-s
-		Summary (wordcount) only
+    -s
+        Summary (wordcount) only
 
-	-e
-		Indicate success/fail in exit value
+    -e
+        Indicate success/fail in exit value
 
-	-d N
-		Set debug level to N
+    -d N
+        Set debug level to N
 
-	-w N
-		Limit header line width to N. Default is you terminal width.
+    -w N
+        Limit header line width to N. Default is you terminal width.
 
-	-f <phrase to fix>
-		Assume that <phrase to fix> is grammatically wrong.
+    -f <phrase to fix>
+        Assume that <phrase to fix> is grammatically wrong.
 
-	-p
-		Input file is template (pot) file
+    -p
+        Input file is template (pot) file
 
 CUSTOMIZATION
-	$me can be customized via ~/.spellcheckrc.
-	Valid configuration entries in ~/.spellcheckrc are:
+    $me can be customized via ~/.spellcheckrc.
+    Valid configuration entries in ~/.spellcheckrc are:
 
-	1. text_editor = command arguments ...
+    1. text_editor = command arguments ...
 
-	   The following patterns in 'text_editor' will be mangled:
+       The following patterns in 'text_editor' will be mangled:
 
-	        PATTERN         REPLACEMENT
-	      %{filename}     The filename
-	      %{line}         The line number containing the word
-	      %{wrongword}    The misspelled word
+            PATTERN         REPLACEMENT
+          %{filename}     The filename
+          %{line}         The line number containing the word
+          %{wrongword}    The misspelled word
 
-	   The default text_editor value is
+       The default text_editor value is
 
-	     $default_text_editor
+         $default_text_editor
 
-	   This opens the file in vi, goes to the line number and moves the
-	   cursor to the first match of the misspelled word.
+       This opens the file in vi, goes to the line number and moves the
+       cursor to the first match of the misspelled word.
 
-	2. <external_command>
-	        shortcut = <a single letter>
-	        description = Descriptive text
-	        command = command arguments ...
-	        continue = <0 or 1>
-	   </external_command>
+    2. <external_command>
+            shortcut = <a single letter>
+            description = Descriptive text
+            command = command arguments ...
+            continue = <0 or 1>
+       </external_command>
 
-	   More than one <external_command> entries are accepted.
-	   The 'command' entries in each <external_command> entries will be
-	   mangled using the following patterns:
+       More than one <external_command> entries are accepted.
+       The 'command' entries in each <external_command> entries will be
+       mangled using the following patterns:
 
-	        PATTERN            REPLACEMENT
-	      %{references}     The reference for the msgid in the po file.
-				If there are more than one references, they
-				will be joined with the comma character.
-				Commas in the reference itself will be escaped
-				with backslash (\,).
+            PATTERN            REPLACEMENT
+          %{references}     The reference for the msgid in the po file.
+                If there are more than one references, they
+                will be joined with the comma character.
+                Commas in the reference itself will be escaped
+                with backslash (\,).
 
-	      %{wrongword}      The misspelled word
+          %{wrongword}      The misspelled word
 
-	      %{po_line}        The line number of the corresponding msgstr
-	      			where the misspelled word is found.
+          %{po_line}        The line number of the corresponding msgstr
+                      where the misspelled word is found.
 
-	   The 'continue' entry tells spellcheck whether to continue checking
-	   the next misspelled word, or recheck the current misspelled word. An
-	   example of external_command entry for googling the misspelled word
-	   is given below:
+       The 'continue' entry tells spellcheck whether to continue checking
+       the next misspelled word, or recheck the current misspelled word. An
+       example of external_command entry for googling the misspelled word
+       is given below:
 
-	   <external_command>
-	       shortcut = g
-	       description = Google it
-	       command = lynx \"http://www.google.com/search?q=%{wrongword}\"
-	       continue = 0
-	   </external_command>
+       <external_command>
+           shortcut = g
+           description = Google it
+           command = lynx \"http://www.google.com/search?q=%{wrongword}\"
+           continue = 0
+       </external_command>
 
-	3. personal_dictionary = /path/to/your/personal/dictionary.txt
+    3. personal_dictionary = /path/to/your/personal/dictionary.txt
 
-	   If defined, $me will also use the specified personal_dictionary.
+       If defined, $me will also use the specified personal_dictionary.
 
 EXAMPLES
-	To begin spellchecking:
-	=======================
+    To begin spellchecking:
+    =======================
 
-	    \$ $me en_US.po
-	    \$ $me -l en_UK en.po
+        \$ $me en_US.po
+        \$ $me -l en_UK en.po
 
 GUIDE ON CHOOSING WHICH DICTIONARY TO SAVE UNKNOWN WORD TO
 
-	1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation.
-	  spelcheck.pl will honor the case sensitivity of the abbreviation: If
-	  you add 'BMI' into it, 'BMI' will be considered as a correct word
-	  while 'bmi' is not.
+    1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation.
+      spelcheck.pl will honor the case sensitivity of the abbreviation: If
+      you add 'BMI' into it, 'BMI' will be considered as a correct word
+      while 'bmi' is not.
 
-	2. Add to ./dict/\$LANG.txt if it is a valid word for the language.
+    2. Add to ./dict/\$LANG.txt if it is a valid word for the language.
 
-	3. Add to ./dict/common.txt if it is a valid word for all languages.
-	   Examples of words that are valid for all languages are \$FULLNAME\$,
-	   etc., although ideally they should not appear in the po files in the
-	   first place.
+    3. Add to ./dict/common.txt if it is a valid word for all languages.
+       Examples of words that are valid for all languages are \$FULLNAME\$,
+       etc., although ideally they should not appear in the po files in the
+       first place.
 
-	4. If it's none of the above, then put it into your personal_dictionary
-	   (see CUSTOMIZATION above).
+    4. If it's none of the above, then put it into your personal_dictionary
+       (see CUSTOMIZATION above).
 
 IGNORED PHRASES
 
-	The dict directory also has files named \$LANGUAGE.ignore.phrases.txt.
-	You may add phrases into this file during the spellchecking process and
-	the whole phrase will be ignored in the future. Any obsolete ignored
-	phrases (no longer encountered) will be reported at the end spellcheck
-	session so that \$LANGUAGE.ignore.phrases.txt can be kept up to date.
+    The dict directory also has files named \$LANGUAGE.ignore.phrases.txt.
+    You may add phrases into this file during the spellchecking process and
+    the whole phrase will be ignored in the future. Any obsolete ignored
+    phrases (no longer encountered) will be reported at the end spellcheck
+    session so that \$LANGUAGE.ignore.phrases.txt can be kept up to date.
 
 Have fun spellchecking!
 ";
@@ -1157,7 +1157,7 @@ sub read_one_char_or_line {
 
     # We no longer show more than 10 suggestions
     # if ($c =~ /^\d$/) {
-    # 	return read_text($c);
+    #     return read_text($c);
     # }
 
     if ( $c =~ /^(r|P)$/ ) {
@@ -1268,9 +1268,9 @@ sub print_suggestions {
 }    # end sub print_suggestions
 
 #sub to_hex_regex {
-#	my $text = shift;
-#	$text =~ s/(.)/sprintf('\\x%02x', ord($1))/ge;
-#	return $text;
+#    my $text = shift;
+#    $text =~ s/(.)/sprintf('\\x%02x', ord($1))/ge;
+#    return $text;
 #}
 
 sub highlight {
@@ -1429,12 +1429,12 @@ sub replace_en_US_db_content {
           . get_last_line_no($spellcheck_fix_sql_file) );
 
     # edit_MySQL_update_file(
-    # 		$conf{text_editor},
-    # 		$meta,
-    # 		$misspelled,
-    # 		$po_line,
-    # 		$suggested_word
-    # 	);
+    #         $conf{text_editor},
+    #         $meta,
+    #         $misspelled,
+    #         $po_line,
+    #         $suggested_word
+    #     );
 
 #print colored ['black on_yellow'],
 #"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
@@ -1785,7 +1785,7 @@ sub handle_unknown_word {
     # print "\n";
 
     # if ($misspelled ne $original_word) {
-    #  	debug "ORIGINAL WORD: '$original_word'\n";
+    #      debug "ORIGINAL WORD: '$original_word'\n";
     # }
     if ( $original_word =~ /&[a-z]+;/ ) {
         print " (original word: '";
@@ -1987,12 +1987,12 @@ sub remove_punctuations_but_not {
 
     my $removed = '';
     $msgstr =~ s{(([$but_not])|([[:punct:]]))($PO_POST_WORD_REGEX)}
-				{$removed .= $3 if defined $3;($2 || ' ') . $4;}ge;
+                {$removed .= $3 if defined $3;($2 || ' ') . $4;}ge;
     $msgstr =~ s{($PO_PRE_WORD_REGEX)(([$but_not])|([[:punct:]]))}
-				{$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ');}ge;
+                {$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ');}ge;
     $msgstr =~
       s{($PO_PRE_WORD_REGEX)(([$but_not])|([[:punct:]]))($PO_POST_WORD_REGEX)}
-				{$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ')}ge;
+                {$removed .= $4 if defined $4;($1 || ' ') . ($3 || ' ') . ($5 || ' ')}ge;
 
     return ( $msgstr, $removed );
 }
