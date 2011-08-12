@@ -8,7 +8,6 @@ use English;
 use File::Basename;
 use File::Slurp qw/slurp/;
 use File::Spec::Functions;
-use FindBin qw($Bin);
 use Getopt::Std;
 use HTML::Strip;
 use IO::Prompt;
