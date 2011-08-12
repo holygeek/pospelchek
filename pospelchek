@@ -379,7 +379,7 @@ sub reference_to_meta {
                     column_name        => $+{column_name},
                 }
               };
-        }    # end if ( $reference =~ m{ })
+        }
         elsif ( $reference =~ /^[^:]+:\d+$/ ) {
             my ( $filename, $line_no ) = split( /:/, $reference );
             push @meta,
@@ -482,7 +482,7 @@ sub get_en_US_msgid_at {
                 $line =~ s/"$//;
                 $msgstr .= $line;
             }
-        }    # end if ( $line_no == $po_line)
+        }
     }
 
     die "Could not find msgid at line $po_line in $po_file\n";
@@ -513,20 +513,10 @@ sub add_MySQL_update_statement_to_file {
     }
     my $new_msgid = $msgid;
     if ( defined $suggested_word ) {
-
-        #print "BEFORE $new_msgid\n";
-        #print "TO REPLACE: $misspelled with $suggested_word\n";
         my $misspelled_regex = get_misspelled_regex($misspelled);
         $new_msgid =~ s/$misspelled_regex/$1$suggested_word$2/;
         $new_msgid =~ s/'/''/g;
-
-        #print "AFTER $new_msgid\n";
-        #print "\n\nSuggested word is $suggested_word\n\n";
-        #<STDIN>;
-        #} else {
-        #print "\n\nSUGGESTED WORD not defined\n\n";
-        #<STDIN>;
-    }    # end if ( defined $suggested_word)
+    }
     $msgid =~ s/'/''/g;
 
     if ($insert_header) {
@@ -976,7 +966,7 @@ sub show_statistics {
             print '.';
         }
         print "\n";
-    }    # end if ($opt_summary_only)
+    }
     else {
         my @ignored_words = ( keys %{ $statistics_for->{ignored_word} } );
 
@@ -1035,7 +1025,6 @@ sub action_handler_exit {
         exit scalar @unknown_words;
     }
     else {
-
         # Always return 0 so that make does not complain
         exit 0;
     }
@@ -1102,7 +1091,6 @@ sub read_text {
     my $c    = shift;
     my $text = '';
 
-    # my $default = ''; #chr(127);
     my $erase_char = chr(127);
     while ( length $c ) {
         if ( $c ne $erase_char ) {
@@ -1122,9 +1110,6 @@ sub read_text {
             -'prompt' => '',
             -tty,
             -onechar,
-
-            #-default => $default,
-            #-newline => '',
             -echo => '',
         );
     }
@@ -1139,11 +1124,6 @@ sub read_one_char {
 
 sub read_one_char_or_line {
     my $c = read_one_char();
-
-    # We no longer show more than 10 suggestions
-    # if ($c =~ /^\d$/) {
-    #     return read_text($c);
-    # }
 
     if ( $c =~ /^(r|P)$/ ) {
         return read_text($c);
@@ -1252,12 +1232,6 @@ sub print_suggestions {
     return \%suggested_for;
 }
 
-#sub to_hex_regex {
-#    my $text = shift;
-#    $text =~ s/(.)/sprintf('\\x%02x', ord($1))/ge;
-#    return $text;
-#}
-
 sub highlight {
     my ( $color, $misspelled, $text ) = @_;
     my $misspelled_regex = get_misspelled_regex($misspelled);
@@ -1338,15 +1312,12 @@ sub show_context_lines {
                     last;
                 }
             }
-        }    # end if ( $c > $line_no )
+        }
 
         last if ( $c > $line_no && $line =~ /c\.loc\s*\(/ );
     }
     close $IN;
 
-#my $hex_representation = to_hex_regex($misspelled);
-#debug ("hex repreentation is '$hex_representation'\n");
-#$to_show =~ s/([^[:alpha:]])$hex_representation([^[:alpha:]])/"$1".color($MISSPELLED_COLOR).$misspelled.color('reset')."$2"/sge;
     if ($found_a_match) {
         print highlight( $MISSPELLED_COLOR, $misspelled, $to_show );
     }
@@ -1362,9 +1333,6 @@ sub show_context_lines {
             print "\n";
         }
     }
-
-    #print `$to_show | ack -C $ncontext --color -Q '$misspelled'`;
-
 }
 
 sub show_db_content {
@@ -1385,7 +1353,6 @@ sub show_db_content {
 sub show_sources {
     my ( $misspelled, $po ) = @_;
 
-    # print "Showing sources fo \'$misspelled\'\n";
     foreach my $source ( get_source_meta( $po->reference() ) ) {
         if ( $source->{type} eq 'DB' ) {
             show_db_content( $misspelled, $source->{meta} );
@@ -1413,17 +1380,6 @@ sub replace_en_US_db_content {
           . $spellcheck_fix_sql_file . ':'
           . get_last_line_no($spellcheck_fix_sql_file) );
 
-    # edit_MySQL_update_file(
-    #         $conf{text_editor},
-    #         $meta,
-    #         $misspelled,
-    #         $po_line,
-    #         $suggested_word
-    #     );
-
-#print colored ['black on_yellow'],
-#"TABLE $table PRIMARY KEY $primary_key_column = $primary_key_value COLUMN $column_name\n";
-
     my ( $table_sql_file, $line_no ) = get_sql_file_and_line_for($meta);
     my $line_number_replaced =
       replace_first_occurrence( $table_sql_file, $line_no, $misspelled,
@@ -1434,7 +1390,6 @@ sub replace_en_US_db_content {
 sub replace_first_occurrence {
     my ( $fullpath, $line_no, $misspelled, $suggested_word ) = @_;
 
-# debug "Replace first $misspelled with $suggested_word in $fullpath starting at $line_no\n";
     open my $TEXT_FILE, '<', $fullpath
       or die "Could not open $fullpath: $!";
 
@@ -1459,8 +1414,8 @@ sub replace_first_occurrence {
                 debug " New line: " . $lines[$c] . "\n";
             }
             last;
-        }    # end if ( $lines[$c] =~ /$misspelled_regex/)
-    }    # end for my $c ( $line_no - ...)
+        }
+    }
 
     close $TEXT_FILE;
 
@@ -1474,7 +1429,7 @@ sub replace_first_occurrence {
 
     if ( !$replacement_done_at ) {
         print colored ['white on_red'],
-"WARNING: No replacement done on $fullpath for $misspelled -> $suggested_word\n";
+            "WARNING: No replacement done on $fullpath for $misspelled -> $suggested_word\n";
     }
     else {
         print $progress_report;
@@ -1520,7 +1475,7 @@ sub replace_in_en_US_sources {
             else {
                 $success = 0;
             }
-        }    # end if ( $source->{type} eq...)
+        }
         elsif ( $source->{type} eq 'FILE' ) {
             if (
                 my $line_no = replace_text_content(
@@ -1567,7 +1522,6 @@ sub replace_in_po_file {
 }
 
 sub sort_ignored_phrases {
-
     # This need to be sorted from longest to shortest so that the shorter
     # phrases do no get in the way of the longer one when we check for their
     # occurrence later.
@@ -1589,7 +1543,6 @@ sub action_handler_ignore_phrase {
     print $IGNORED_PHRASES $GIVEN_TEXT . "\n";
     close $IGNORED_PHRASES;
     if ( !defined $ignored_phrase_count_for{$GIVEN_TEXT} ) {
-
         # Set it to 1 so that it won't show up as unmatched.
         # Trust the user that the phrase happens at least once.
         $ignored_phrase_count_for{$GIVEN_TEXT} = 1;
@@ -1626,7 +1579,6 @@ sub action_handler_replace_with_suggested {
     my $success;
 
     if ( $LANGUAGE eq 'en_US' ) {
-
         # Replace in the original source files where c.loc is done
         $success =
           replace_in_en_US_sources( $original_word, $suggested_word, $po );
@@ -1764,14 +1716,6 @@ sub handle_unknown_word {
               . ' ' );
     }
 
-    # print colored [$MISSPELLED_COLOR], "$misspelled [$original_word]";
-
-    # print colored [$MISSPELLED_COLOR], "$misspelled";
-    # print "\n";
-
-    # if ($misspelled ne $original_word) {
-    #      debug "ORIGINAL WORD: '$original_word'\n";
-    # }
     if ( $original_word =~ /&[a-z]+;/ ) {
         print " (original word: '";
         print colored [$MISSPELLED_COLOR], $original_word;
@@ -2302,7 +2246,7 @@ sub thing_doer {
             print "$language.po does not exists. Spell check aborted.\n";
             exit 1;
         }
-    }    # end if ( !-e $po_file )
+    }
 
     my $messages_aref = Locale::PO->load_file_asarray($po_file);
 
