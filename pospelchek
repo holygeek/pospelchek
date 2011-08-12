@@ -15,6 +15,7 @@ use Term::ANSIColor;
 use Text::Aspell;
 use Term::ReadKey;
 
+my $me = basename(__FILE__);
 my $default_text_editor
 	= "vi %{filename} +%{line} -c 'set hlsearch' -c 'normal /%{wrongword}'";
 my $mysql_dir = 'scripts/mysql';
@@ -35,16 +36,6 @@ my $PO_POST_WORD_REGEX = qr/
 
 my %opts;
 my $valid_option = getopts('sueipb:d:w:f:l:', \%opts);
-# -l <lang>   lang looks like en_US, zh_CN
-# -b <base_dir> for files where text came from
-# -i    'Edit po files when making correction (as opposed to the source)'
-# -u    'do not show unknown word list'
-# -s    'summary (wordcount) only'
-# -e    'Indicate success/fail in exit value'
-# -d n  'debug level is n'
-# -w n  'header line width is n'
-# -f <phrase to fix>
-# -p    'input file is template (pot) file'
 my $po_file = $ARGV[0];
 if (! defined $po_file) {
 	print_usage();
@@ -162,7 +153,6 @@ if (defined $opts{p} || $po_file =~ /\.pot$/) {
     $opt_is_pot_file = 1;
 }
 
-my $me = basename(__FILE__);
 if (! $valid_option || ! defined $ARGV[0] ) {
 	print "Usage: " . $me . " [-s] [-d <debug level>] <language>\n";
 	print "Example: " . $me . " en_US\n";
@@ -601,117 +591,134 @@ sub print_usage {
 	}
 
 	my $usage_text = "
-SPELLCHECK HOWTO
-----------------
+NAME
+	$me - spellcheck a po/pot file
+
+SYNOPSIS
+	$me [options] <po/pot file>
+
+OPTIONS
+
+	-l <lang>
+		lang looks like en_US, zh_CN
+
+	-b <base_dir>
+		Look in <dir> for files where text came from
+
+	-i
+		Edit po files when making correction (as opposed to the source)
+
+	-u
+		Do not show unknown word list
+
+	-s
+		Summary (wordcount) only
+
+	-e
+		Indicate success/fail in exit value
+
+	-d N
+		Set debug level to N
+
+	-w N
+		Limit header line width to N. Default is you terminal width.
+
+	-f <phrase to fix>
+		Assume that <phrase to fix> is grammatically wrong.
+
+	-p
+		Input file is template (pot) file
 
 CUSTOMIZATION
-=============
-$me can be customized via ~/.spellcheckrc.
-Valid configuration entries in ~/.spellcheckrc are:
+	$me can be customized via ~/.spellcheckrc.
+	Valid configuration entries in ~/.spellcheckrc are:
 
-  1. text_editor = command arguments ...
+	1. text_editor = command arguments ...
 
-     The following patterns in 'text_editor' will be mangled:
+	   The following patterns in 'text_editor' will be mangled:
 
-          PATTERN         REPLACEMENT
-        %{filename}     The filename
-        %{line}         The line number containing the word
-        %{wrongword}    The misspelled word
+	        PATTERN         REPLACEMENT
+	      %{filename}     The filename
+	      %{line}         The line number containing the word
+	      %{wrongword}    The misspelled word
 
-     The default text_editor value is
+	   The default text_editor value is
 
-       $default_text_e
+	     $default_text_editor
 
-     This opens the file in vi, goes to the line number and moves the cursor
-     to the first match of the misspelled word.
+	   This opens the file in vi, goes to the line number and moves the
+	   cursor to the first match of the misspelled word.
 
-     text_editor will be used when editing po files. For editing references
-     to msgids (e.g., #: path/to/file.html:22), see po_reference_editor below.
+	2. <external_command>
+	        shortcut = <a single letter>
+	        description = Descriptive text
+	        command = command arguments ...
+	        continue = <0 or 1>
+	   </external_command>
 
-  2. <external_command>
-          shortcut = <a single letter>
-          description = Descriptive text
-          command = command arguments ...
-          continue = <0 or 1>
-     </external_command>
+	   More than one <external_command> entries are accepted.
+	   The 'command' entries in each <external_command> entries will be
+	   mangled using the following patterns:
 
-     More than one <external_command> entries are accepted.
-     The 'command' entries in each <external_command> entries will be mangled
-     using the following patterns:
+	        PATTERN            REPLACEMENT
+	      %{references}     The reference for the msgid in the po file.
+				If there are more than one references, they
+				will be joined with the comma character.
+				Commas in the reference itself will be escaped
+				with backslash (\,).
 
-          PATTERN            REPLACEMENT
-        %{references}      The reference for the msgid in the po file.
-                           If there are more than one references, they will be
-                           joined with the comma character. Commas in the
-                           reference itself will be escaped with backslash (\,).
+	      %{wrongword}      The misspelled word
 
-        %{wrongword}       The misspelled word
+	      %{po_line}        The line number of the corresponding msgstr
+	      			where the misspelled word is found.
 
-        %{po_line}         The line number of the corresponding msgstr where the
-                           misspelled word is found.
+	   The 'continue' entry tells spellcheck whether to continue checking
+	   the next misspelled word, or recheck the current misspelled word. An
+	   example of external_command entry for googling the misspelled word
+	   is given below:
 
-     The 'continue' entry tells spellcheck whether to continue checking the next
-     misspelled word, or recheck the current misspelled word. An example of
-     external_command entry for googling the misspelled word is given below:
+	   <external_command>
+	       shortcut = g
+	       description = Google it
+	       command = lynx \"http://www.google.com/search?q=%{wrongword}\"
+	       continue = 0
+	   </external_command>
 
-     <external_command>
-         shortcut = g
-         description = Google it
-         command = lynx \"http://www.google.com/search?q=%{wrongword}\"
-         continue = 0
-     </external_command>
+	3. personal_dictionary = /path/to/your/personal/dictionary.txt
 
-  3. personal_dictionary = /path/to/your/personal/dictionary.txt
+	   If defined, $me will also use the specified personal_dictionary.
 
-     If defined, $me will also use the specified personal_dictionary.
+EXAMPLES
+	To begin spellchecking:
+	=======================
 
-  4. po_reference_editor = command arguments ...
+	    \$ $me en_US.po
+	    \$ $me -l en_UK en.po
 
-     The value of po_reference_editor will be mangled in the same way as the 'command'
-     entry in external_command.
+GUIDE ON CHOOSING WHICH DICTIONARY TO SAVE UNKNOWN WORD TO
 
-     Default value:
+	1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation.
+	  spelcheck.pl will honor the case sensitivity of the abbreviation: If
+	  you add 'BMI' into it, 'BMI' will be considered as a correct word
+	  while 'bmi' is not.
 
-       po_reference_editor.pl %{wrongword} %{po_line} %{references}
+	2. Add to ./dict/\$LANG.txt if it is a valid word for the language.
 
-To show wordcount statistics:
-=============================
+	3. Add to ./dict/common.txt if it is a valid word for all languages.
+	   Examples of words that are valid for all languages are \$FULLNAME\$,
+	   etc., although ideally they should not appear in the po files in the
+	   first place.
 
-   \$ make wordcount LANGUAGE=en_US
+	4. If it's none of the above, then put it into your personal_dictionary
+	   (see CUSTOMIZATION above).
 
-To begin spellchecking:
-=======================
+IGNORED PHRASES
 
-    \$ make spellcheck LANGUAGE=en_US
-
-    or
-
-    \$ make spellcheck LANGUAGE=ms_MY
-
-Quick guide on choosing which dictionary to save unknown word to:
-=================================================================
-
-  1. Add to ./dict/\$LANG.abbr.txt if it is a valid abbreviation. spelcheck.pl
-     will honor the case sensitivity of the abbreviation: If you add 'BMI' into
-     it, 'BMI' will be considered as a correct word while 'bmi' is not.
-
-  2. Add to ./dict/\$LANG.abbr.txt if it is a valid word for the language.
-
-  3. Add to ./dict/common.txt if it is a valid word for all languages. Examples of
-     words that are valid for all languages are \$FULLNAME\$, VAR_NAME, etc.
-
-  4. If it's none of the above, then put it into your personal_dictionary (see
-     CUSTOMIZATION above).
-
-Ignored Phrases
-===============
-
-The dict directory also has files named \$LANGUAGE.ignore.phrases.txt.  You may
-add phrases into this file during the spellchecking process and the whole
-phrase will be ignored in the future. Any obsolete ignored phrases (no longer
-encountered) will be reported at the end spellcheck session so that
-\$LANGUAGE.ignore.phrases.txt can be kept up to date.
-
+	The dict directory also has files named \$LANGUAGE.ignore.phrases.txt.
+	You may add phrases into this file during the spellchecking process and
+	the whole phrase will be ignored in the future. Any obsolete ignored
+	phrases (no longer encountered) will be reported at the end spellcheck
+	session so that \$LANGUAGE.ignore.phrases.txt can be kept up to date.
 
 Have fun spellchecking!
 ";
