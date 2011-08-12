@@ -125,22 +125,14 @@ my $MAX_SUGGEST = 10;
 
 load_spellcheckrc();
 
-$opt_base_dir = $opts{b} || './';
-if ( defined $opts{i} ) {
-    $opt_edit_in_place = 1;
-}
-if ( defined $opts{s} ) {
-    $opt_summary_only = 1;
-}
-if ( defined $opts{d} ) {
-    $opt_debug_level = int( $opts{d} );
-}
-if ( defined $opts{u} ) {
-    $opt_show_unknown_word_list = 0;
-}
-if ( defined $opts{e} ) {
-    $opt_exit_value = 1;
-}
+$opt_base_dir               = $opts{b} || './';
+$opt_debug_level            = int( $opts{d} ) if ( defined $opts{d} );
+$opt_edit_in_place          = 1 if ( defined $opts{i} );
+$opt_exit_value             = 1 if ( defined $opts{e} );
+$opt_fix_phrase             = $opts{f} if ( defined $opts{f} );
+$opt_is_pot_file            = 1 if ( defined $opts{p} || $po_file =~ /\.pot$/ );
+$opt_show_unknown_word_list = 0 if ( defined $opts{u} );
+$opt_summary_only           = 1 if ( defined $opts{s} );
 if ( defined $opts{w} ) {
     if ( $opts{w} =~ /^[0-9]+$/ ) {
         $opt_header_line_width = int( $opts{w} );
@@ -150,16 +142,9 @@ if ( defined $opts{w} ) {
         exit 1;
     }
 }
-if ( defined $opts{f} ) {
-    $opt_fix_phrase = $opts{f};
-}
-if ( defined $opts{p} || $po_file =~ /\.pot$/ ) {
-    $opt_is_pot_file = 1;
-}
 
 if ( !$valid_option || !defined $ARGV[0] ) {
-    print "Usage: " . $me . " [-s] [-d <debug level>] <language>\n";
-    print "Example: " . $me . " en_US\n";
+    print_usage();
     exit 1;
 }
 
