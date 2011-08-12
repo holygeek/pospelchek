@@ -125,15 +125,16 @@ my $MAX_SUGGEST = 10;
 
 load_spellcheckrc();
 
-$opt_base_dir               = $opts{b} || './';
-$opt_debug_level            = int( $opts{d} ) if ( defined $opts{d} );
-$opt_edit_in_place          = 1 if ( defined $opts{i} );
-$opt_exit_value             = 1 if ( defined $opts{e} );
-$opt_fix_phrase             = $opts{f} if ( defined $opts{f} );
+$opt_base_dir = $opts{b} || './';
+$opt_debug_level   = int( $opts{d} ) if ( defined $opts{d} );
+$opt_edit_in_place = 1               if ( defined $opts{i} );
+$opt_exit_value    = 1               if ( defined $opts{e} );
+$opt_fix_phrase    = $opts{f}        if ( defined $opts{f} );
 $opt_is_pot_file            = 1 if ( defined $opts{p} || $po_file =~ /\.pot$/ );
 $opt_show_unknown_word_list = 0 if ( defined $opts{u} );
 $opt_summary_only           = 1 if ( defined $opts{s} );
 if ( defined $opts{w} ) {
+
     if ( $opts{w} =~ /^[0-9]+$/ ) {
         $opt_header_line_width = int( $opts{w} );
     }
@@ -1025,6 +1026,7 @@ sub action_handler_exit {
         exit scalar @unknown_words;
     }
     else {
+
         # Always return 0 so that make does not complain
         exit 0;
     }
@@ -1429,7 +1431,7 @@ sub replace_first_occurrence {
 
     if ( !$replacement_done_at ) {
         print colored ['white on_red'],
-            "WARNING: No replacement done on $fullpath for $misspelled -> $suggested_word\n";
+"WARNING: No replacement done on $fullpath for $misspelled -> $suggested_word\n";
     }
     else {
         print $progress_report;
@@ -1522,6 +1524,7 @@ sub replace_in_po_file {
 }
 
 sub sort_ignored_phrases {
+
     # This need to be sorted from longest to shortest so that the shorter
     # phrases do no get in the way of the longer one when we check for their
     # occurrence later.
@@ -1543,6 +1546,7 @@ sub action_handler_ignore_phrase {
     print $IGNORED_PHRASES $GIVEN_TEXT . "\n";
     close $IGNORED_PHRASES;
     if ( !defined $ignored_phrase_count_for{$GIVEN_TEXT} ) {
+
         # Set it to 1 so that it won't show up as unmatched.
         # Trust the user that the phrase happens at least once.
         $ignored_phrase_count_for{$GIVEN_TEXT} = 1;
@@ -1579,6 +1583,7 @@ sub action_handler_replace_with_suggested {
     my $success;
 
     if ( $LANGUAGE eq 'en_US' ) {
+
         # Replace in the original source files where c.loc is done
         $success =
           replace_in_en_US_sources( $original_word, $suggested_word, $po );
@@ -1722,7 +1727,7 @@ sub handle_unknown_word {
         print "')\n";
     }
 
-    if ( $opt_is_pot_file ) {
+    if ($opt_is_pot_file) {
         if ( $original_word =~ /&[a-z]+;/ ) {
             show_sources( $original_word, $po );
         }
