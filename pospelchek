@@ -15,6 +15,7 @@ use Term::ANSIColor;
 use Text::Aspell;
 use Term::ReadKey;
 
+my $VERSION = '0.10';
 my $me = basename(__FILE__);
 my $default_text_editor =
   "vi %{filename} +%{line} -c 'set hlsearch' -c 'normal /%{wrongword}'";
@@ -561,6 +562,9 @@ sub print_usage {
     my $usage_text = "
 NAME
     $me - spellcheck a po/pot file
+
+VERSION
+    $VERSION
 
 SYNOPSIS
     $me [options] <po/pot file>
