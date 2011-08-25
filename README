@@ -1,3 +1,10 @@
 pospelchek is aspell for po files.
 
+Example usage:
+
+  $ pospelchek -l fr_FR fr.po
+
 Run pospelchek without any options to see the usage notes.
+
+Intall any of the aspell-* dictionaries to make it work with your language of
+choice.
