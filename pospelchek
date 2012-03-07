@@ -574,9 +574,6 @@ SYNOPSIS
 
 OPTIONS
 
-    -l <lang>
-        lang looks like en_US, zh_CN
-
     -b <base_dir>
         Look in <dir> for files where text came from
 
@@ -585,29 +582,32 @@ OPTIONS
         Separate each regex with a comma. Note that "-c 'foo|bar'" and "-c
         foo,bar" has the same effect.
 
-    -i
-        Edit po files when making correction (as opposed to the source)
-
-    -u
-        Do not show unknown word list
-
-    -s
-        Summary (wordcount) only
-
-    -e
-        Indicate success/fail in exit value
-
     -d N
         Set debug level to N
-
-    -w N
-        Limit header line width to N. Default is you terminal width.
 
     -f <phrase to fix>
         Assume that <phrase to fix> is grammatically wrong.
 
+    -e
+        Indicate success/fail in exit value
+
+    -i
+        Edit po files when making correction (as opposed to the source)
+
+    -l <lang>
+        lang looks like en_US, zh_CN
+
     -p
         Input file is template (pot) file
+
+    -s
+        Summary (wordcount) only
+
+    -u
+        Do not show unknown word list
+
+    -w N
+        Limit header line width to N. Default is you terminal width.
 
 CUSTOMIZATION
     $me can be customized via ~/.spellcheckrc.
