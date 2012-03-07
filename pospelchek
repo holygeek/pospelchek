@@ -36,7 +36,7 @@ my $PO_POST_WORD_REGEX = qr/
             /x;
 
 my %opts;
-my $valid_option = getopts( 'sueipb:d:w:f:l:', \%opts );
+my $valid_option = getopts( 'sueipb:d:w:f:l:c:', \%opts );
 my $po_file = $ARGV[0];
 if ( !defined $po_file ) {
     print_usage();
@@ -77,6 +77,7 @@ my $opt_show_unknown_word_list = 1;
 my $opt_header_line_width      = 0;
 my $opt_fix_phrase;
 my $opt_is_pot_file = 0;
+my @opt_clear;
 
 my $pristine_msgstr           = '';
 my $current_msgstr_cleaned    = '';
@@ -134,6 +135,8 @@ $opt_fix_phrase    = $opts{f}        if ( defined $opts{f} );
 $opt_is_pot_file            = 1 if ( defined $opts{p} || $po_file =~ /\.pot$/ );
 $opt_show_unknown_word_list = 0 if ( defined $opts{u} );
 $opt_summary_only           = 1 if ( defined $opts{s} );
+@opt_clear = split(',', $opts{c}) if ( defined $opts{c} );
+
 if ( defined $opts{w} ) {
 
     if ( $opts{w} =~ /^[0-9]+$/ ) {
@@ -576,6 +579,11 @@ OPTIONS
 
     -b <base_dir>
         Look in <dir> for files where text came from
+
+    -c <regex,...>
+        Replace strings that matches the given regex before spellchecking.
+        Separate each regex with a comma. Note that \"-c 'foo|bar'\" and \"-c
+        foo,bar\" has the same effect.
 
     -i
         Edit po files when making correction (as opposed to the source)
@@ -2002,6 +2010,15 @@ sub remove_insignificant_characters {
     return $msgstr;
 }
 
+sub clear {
+    my ($msgstr, @clear) = @_;
+
+    foreach my $clear (@clear) {
+        $msgstr =~ s/$clear/ /g;
+    }
+    return $msgstr;
+}
+
 sub remove_ignored_phrases {
     my ($msgstr) = @_;
 
@@ -2066,6 +2083,10 @@ sub spelchek {
                     $opt_fix_phrase );
             }
             next;
+        }
+
+        if (scalar @opt_clear) {
+            $msgstr = clear($msgstr, @opt_clear);
         }
 
         $msgstr = remove_ignored_phrases($msgstr);
