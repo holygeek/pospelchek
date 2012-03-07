@@ -562,7 +562,7 @@ sub get_misspelled_regex {
 }
 
 sub print_usage {
-    my $usage_text = "
+    my $usage_text = <<EOF;
 NAME
     $me - spellcheck a po/pot file
 
@@ -582,8 +582,8 @@ OPTIONS
 
     -c <regex,...>
         Replace strings that matches the given regex before spellchecking.
-        Separate each regex with a comma. Note that \"-c 'foo|bar'\" and \"-c
-        foo,bar\" has the same effect.
+        Separate each regex with a comma. Note that "-c 'foo|bar'" and "-c
+        foo,bar" has the same effect.
 
     -i
         Edit po files when making correction (as opposed to the source)
@@ -701,7 +701,7 @@ IGNORED PHRASES
     session so that \$LANGUAGE.ignore.phrases.txt can be kept up to date.
 
 Have fun spellchecking!
-";
+EOF
     my $PAGER;
     if ( open $PAGER, "|less" ) {
         print $PAGER $usage_text;
