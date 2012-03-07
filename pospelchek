@@ -2072,6 +2072,10 @@ sub spelchek {
         next if $msgid eq '""';
 
         my $msgstr = $po->msgstr();
+        if (! defined $msgstr) {
+            # TODO This might be due to Locale::PO's limitation
+            next;
+        }
         if ($opt_is_pot_file) {
             $msgstr = $msgid;
         }
