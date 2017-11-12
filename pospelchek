@@ -429,10 +429,10 @@ sub edit_file {
 
     if ( defined $editor ) {
         my $cmd = $editor;
-        $cmd        =~ s/%{filename}/$file_path/g;
-        $cmd        =~ s/%{line}/$line_no/g;
+        $cmd        =~ s/%\{filename\}/$file_path/g;
+        $cmd        =~ s/%\{line\}/$line_no/g;
         $misspelled =~ s/'/\\'/g;
-        $cmd        =~ s/%{wrongword}/$misspelled/g;
+        $cmd        =~ s/%\{wrongword\}/$misspelled/g;
         $success = run_cmd($cmd);
     }
     else {
@@ -1662,8 +1662,8 @@ sub action_handler_external_command {
 
     my $references = join_references( $po->reference() );
     notify_action("Running external command [$cmd]");
-    $cmd =~ s/%{references}/$references/g;
-    $cmd =~ s/%{wrongword}/$misspelled/g;
+    $cmd =~ s/%\{references\}/$references/g;
+    $cmd =~ s/%\{wrongword\}/$misspelled/g;
     debug("External command is [$cmd]\n");
 
     my $success = run_cmd($cmd);
