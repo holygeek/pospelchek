@@ -578,9 +578,9 @@ OPTIONS
         Look in <dir> for files where text came from
 
     -c <regex,...>
-        Replace strings that matches the given regex before spellchecking.
-        Separate each regex with a comma. Note that "-c 'foo|bar'" and "-c
-        foo,bar" has the same effect.
+        Replace strings that matches the given regex with a space before
+        spellchecking.  Separate each regex with a comma. Note that "-c
+        'foo|bar'" and "-c foo,bar" has the same effect.
 
     -d N
         Set debug level to N
