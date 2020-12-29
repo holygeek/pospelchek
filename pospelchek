@@ -703,11 +703,11 @@ IGNORED PHRASES
 Have fun spellchecking!
 EOF
     my $PAGER;
-    if ( open $PAGER, '|', 'less' ) {
+    if ( open $PAGER, '|-', 'less' ) {
         print $PAGER $usage_text;
         close $PAGER;
     }
-    elsif ( open $PAGER, '|', 'more' ) {
+    elsif ( open $PAGER, '|-', 'more' ) {
         print $PAGER $usage_text;
         close $PAGER;
     }
