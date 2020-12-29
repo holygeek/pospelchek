@@ -36,7 +36,7 @@ my $PO_POST_WORD_REGEX = qr/
             /x;
 
 my %opts;
-my $valid_option = getopts( 'sueipb:d:w:f:l:c:', \%opts );
+my $valid_option = getopts( 'sueipb:d:w:f:l:c:C:', \%opts );
 my $po_file = $ARGV[0];
 if ( !defined $po_file ) {
     print_usage();
@@ -78,6 +78,7 @@ my $opt_header_line_width      = 0;
 my $opt_fix_phrase;
 my $opt_is_pot_file = 0;
 my @opt_clear;
+my @opt_collapse;
 
 my $pristine_msgstr           = '';
 my $current_msgstr_cleaned    = '';
@@ -136,6 +137,7 @@ $opt_is_pot_file            = 1 if ( defined $opts{p} || $po_file =~ /\.pot$/ );
 $opt_show_unknown_word_list = 0 if ( defined $opts{u} );
 $opt_summary_only           = 1 if ( defined $opts{s} );
 @opt_clear = split(',', $opts{c}) if ( defined $opts{c} );
+@opt_collapse = split(',', $opts{C}) if (defined $opts{C} );
 
 if ( defined $opts{w} ) {
 
@@ -576,6 +578,9 @@ OPTIONS
 
     -b <base_dir>
         Look in <dir> for files where text came from
+
+    -C <regex,...>
+        Remove text matching the given regex before spellchecking.
 
     -c <regex,...>
         Replace strings that matches the given regex with a space before
@@ -2019,6 +2024,15 @@ sub clear {
     return $msgstr;
 }
 
+sub collapse {
+    my ($msgstr, @collapse) = @_;
+
+    foreach my $collapse (@collapse) {
+        $msgstr =~ s/$collapse//g;
+    }
+    return $msgstr;
+}
+
 sub remove_ignored_phrases {
     my ($msgstr) = @_;
 
@@ -2091,6 +2105,10 @@ sub spelchek {
 
         if (scalar @opt_clear) {
             $msgstr = clear($msgstr, @opt_clear);
+        }
+
+        if (scalar @opt_collapse) {
+            $msgstr = collapse($msgstr, @opt_collapse);
         }
 
         $msgstr = remove_ignored_phrases($msgstr);
